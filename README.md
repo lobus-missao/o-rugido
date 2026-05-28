@@ -144,6 +144,8 @@ python api_server.py
 
 Endpoints principais:
 
+Pipeline:
+
 - `GET /health`
 - `GET /stats`
 - `GET /batches?status=pending`
@@ -153,22 +155,36 @@ Endpoints principais:
 - `POST /pipeline/cleanup`
 - `POST /cards/update-status`
 
+Editorial:
+
+- `GET /api/editorial/top3`
+- `POST /api/dispatch/run`
+- `POST /api/review/news`
+- `POST /api/cards/generate`
+- `POST /api/review/card`
+- `GET /api/dispatch/status`
+- `POST /api/telegram/callback`
+
 ## Dashboard Streamlit
 
 ```powershell
 streamlit run dashboard.py
 ```
 
-O dashboard serve para:
+Paginas:
 
-- visualizar noticias coletadas;
-- acompanhar ranking;
-- revisar e importar lotes de IA;
-- revisar fluxo editorial;
-- visualizar cards;
-- controlar fontes RSS;
-- acompanhar alertas e saude operacional;
-- operar manualmente se Telegram ou n8n falharem.
+- `0_Edicoes` — status das edicoes por data e edicao
+- `1_Operacao` — visao operacional geral e saude do sistema
+- `2_Lotes_IA` — criar, enviar e importar lotes de enriquecimento de IA
+- `3_Ranking` — ranking de artigos por score e escopo
+- `4_Clusters` — agrupamento tematico de noticias
+- `5_Editorial` — aprovar, rejeitar e baixar artigos do fluxo editorial
+- `6_Entidades` — entidades extraidas (pessoas, organizacoes, lugares)
+- `7_Alertas` — alertas e anomalias operacionais
+- `8_Fontes_RSS` — gerenciar fontes RSS
+
+O dashboard nao deve guardar regra de negocio principal. Toda decisao editorial precisa refletir no PostgreSQL.
+Ele opera como fallback manual se Telegram ou n8n falharem.
 
 Ele nao deve guardar regra de negocio principal. Toda decisao editorial precisa refletir no PostgreSQL.
 
