@@ -1,0 +1,156 @@
+{
+  "name": "News Radar — Pipeline Completo",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 2 }] }
+      },
+      "id": "schedule",
+      "name": "⏰ Schedule (2h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /app && news-radar collect --limit-per-feed 30"
+      },
+      "id": "collect",
+      "name": "1. Coletar feeds",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /app && news-radar rank"
+      },
+      "id": "rank",
+      "name": "2. Calcular ranking",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /app && news-radar make-ai-batches --scope brasil --top 200 --days-back 3"
+      },
+      "id": "batches_brasil",
+      "name": "3a. Lotes Brasil",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "command": "cd /app && news-radar make-ai-batches --scope piaui --top 200 --days-back 3"
+      },
+      "id": "batches_piaui",
+      "name": "3b. Lotes Piauí",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /app && news-radar make-ai-batches --scope teresina --top 200 --days-back 3"
+      },
+      "id": "batches_teresina",
+      "name": "3c. Lotes Teresina",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Notifica que lotes estão prontos para análise manual\nconst collect = $('1. Coletar feeds').first().json;\nreturn [{ json: { message: `Pipeline concluído. Lotes gerados. Acesse o dashboard para processar a IA.`, inserted: collect.inserted || 0 } }];"
+      },
+      "id": "notify_batches",
+      "name": "4. Notificar lotes prontos",
+      "type": "n8n-nodes-base.code",
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "🤖 *News Radar — Ciclo concluído*\n\nLotes de IA prontos para análise.\nAcesse o dashboard para copiar os prompts e importar resultados.\n\n_Pipeline automático — {{ new Date().toLocaleString('pt-BR') }}_",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "telegram_notify",
+      "name": "5. Telegram: lotes prontos",
+      "type": "n8n-nodes-base.telegram",
+      "position": [1200, 300],
+      "credentials": { "telegramApi": { "id": "telegram-creds", "name": "Telegram Bot" } }
+    },
+    {
+      "parameters": {
+        "command": "cd /app && news-radar cleanup --days 30 --expire-batches-hours 48"
+      },
+      "id": "cleanup",
+      "name": "6. Limpeza periódica",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [1440, 300]
+    },
+    {
+      "parameters": { "path": "telegram-approval", "responseMode": "responseNode" },
+      "id": "webhook_approval",
+      "name": "Webhook: Aprovação Telegram",
+      "type": "n8n-nodes-base.webhook",
+      "position": [0, 600],
+      "webhookId": "telegram-approval"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst callback = body?.callback_query;\nif (!callback) return [];\nconst data = callback.data || '';\nconst [action, articleId] = data.split(':');\nconst status = action === 'approve' ? 'approved' : 'rejected';\nreturn [{ json: { article_id: articleId, status, from: callback.from?.first_name } }];"
+      },
+      "id": "parse_callback",
+      "name": "Parsear callback Telegram",
+      "type": "n8n-nodes-base.code",
+      "position": [240, 600]
+    },
+    {
+      "parameters": {
+        "command": "=cd /app && news-radar update-card-status --article-id {{ $json.article_id }} --status {{ $json.status }}"
+      },
+      "id": "update_status",
+      "name": "Atualizar status no banco",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [480, 600]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $('Parsear callback Telegram').first().json.status === 'approved' ? '✅ Card aprovado!' : '❌ Card rejeitado.' }} ({{ $('Parsear callback Telegram').first().json.from }})",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "telegram_confirm",
+      "name": "Telegram: confirmar ação",
+      "type": "n8n-nodes-base.telegram",
+      "position": [720, 600],
+      "credentials": { "telegramApi": { "id": "telegram-creds", "name": "Telegram Bot" } }
+    },
+    {
+      "parameters": { "respondWith": "text", "responseBody": "ok" },
+      "id": "webhook_response",
+      "name": "Responder webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [960, 600]
+    }
+  ],
+  "connections": {
+    "⏰ Schedule (2h)": { "main": [[{ "node": "1. Coletar feeds", "type": "main", "index": 0 }]] },
+    "1. Coletar feeds": { "main": [[{ "node": "2. Calcular ranking", "type": "main", "index": 0 }]] },
+    "2. Calcular ranking": {
+      "main": [[
+        { "node": "3a. Lotes Brasil", "type": "main", "index": 0 },
+        { "node": "3b. Lotes Piauí", "type": "main", "index": 0 },
+        { "node": "3c. Lotes Teresina", "type": "main", "index": 0 }
+      ]]
+    },
+    "3a. Lotes Brasil": { "main": [[{ "node": "4. Notificar lotes prontos", "type": "main", "index": 0 }]] },
+    "3b. Lotes Piauí": { "main": [[{ "node": "4. Notificar lotes prontos", "type": "main", "index": 0 }]] },
+    "3c. Lotes Teresina": { "main": [[{ "node": "4. Notificar lotes prontos", "type": "main", "index": 0 }]] },
+    "4. Notificar lotes prontos": { "main": [[{ "node": "5. Telegram: lotes prontos", "type": "main", "index": 0 }]] },
+    "5. Telegram: lotes prontos": { "main": [[{ "node": "6. Limpeza periódica", "type": "main", "index": 0 }]] },
+    "Webhook: Aprovação Telegram": { "main": [[{ "node": "Parsear callback Telegram", "type": "main", "index": 0 }]] },
+    "Parsear callback Telegram": { "main": [[{ "node": "Atualizar status no banco", "type": "main", "index": 0 }]] },
+    "Atualizar status no banco": { "main": [[{ "node": "Telegram: confirmar ação", "type": "main", "index": 0 }]] },
+    "Telegram: confirmar ação": { "main": [[{ "node": "Responder webhook", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "news-radar" }]
+}

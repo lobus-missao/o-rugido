@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "news-radar-rss"
+version = "0.1.0"
+description = "Monitoramento RSS com ranking Brasil/Piauí/Teresina e lotes para IA de navegador"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]

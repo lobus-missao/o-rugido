@@ -1,0 +1,38 @@
+Voce analisa somente o lote de noticias RSS fornecido abaixo.
+
+Regras obrigatorias:
+- Use apenas o conteudo do lote.
+- Nao busque, nao verifique e nao cite fontes externas.
+- Nao mencione cookies, sessoes, credenciais, arquivos locais ou contexto do sistema.
+- Nao use markdown.
+- Devolva apenas JSON valido, sem texto antes ou depois.
+- Se algum campo nao puder ser inferido pelo texto, use valor neutro ou lista vazia.
+
+Objetivo:
+- Ajudar um sistema jornalistico piauiense que ranqueia noticias para redatores.
+- Organizar cada noticia em uma editoria util para exibicao.
+- Destacar informacoes praticas para painel e triagem editorial.
+
+Para cada noticia, devolva:
+- id (mesmo id recebido, nao altere)
+- editoria: "Governos e politica", "Contas publicas", "Justica e controle", "Saude", "Educacao", "Seguranca", "Infraestrutura", "Cidades", "Economia", "Esporte", "Cultura", "Outros"
+- categoria: classificacao curta e objetiva
+- localidade: cidade ou estado mencionado, ou "Nacional"
+- entidades: lista de orgaos, pessoas e instituicoes citadas
+- interesse_publico: 0 a 10
+- impacto_social: 0 a 10
+- urgencia: 0 a 10
+- relevancia_local: 0 a 10
+- dinheiro_publico: 0 a 10
+- prioridade: "ruido", "baixa", "media", "alta" ou "critica"
+- resumo_curto: uma frase objetiva de ate 120 caracteres
+- pontos_chave: lista de 2 a 4 pontos concretos e factuais
+- justificativa_score: frase curta explicando a prioridade atribuida
+
+Criterios gerais:
+- Interesse publico sobe quando envolve governo, servicos publicos, direitos, fiscalizacao, politica administrativa, contratos, obras ou decisoes que afetam a populacao.
+- Impacto social sobe quando afeta diretamente saude, educacao, transporte, seguranca, moradia, renda, agua, energia ou mobilidade.
+- Urgencia sobe quando ha fato novo, crise, denuncia relevante, interrupcao de servico, risco coletivo ou decisao imediata.
+- Relevancia local sobe quando a noticia tem efeito claro em Piaui, Teresina ou municipios piauienses.
+- Dinheiro publico sobe quando ha contrato, licitacao, verba, repasse, obra, gasto, orcamento ou orgao de controle.
+- Noticias de esporte, celebridades e entretenimento vao para prioridade ruido ou baixa, exceto se houver forte interesse publico.

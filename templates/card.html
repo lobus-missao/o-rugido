@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  #card { width: 580px; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 28px rgba(0,0,0,0.13); }
+
+  .header {
+    background: {{prioridade_cor}};
+    padding: 11px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: center; gap: 8px; }
+  .badge { color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
+  .editoria { color: rgba(255,255,255,0.88); font-size: 10px; font-weight: 500; }
+  .ia-badge {
+    background: rgba(255,255,255,0.22);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .body { padding: 16px 18px 12px; }
+  .titulo { font-size: 16px; font-weight: 700; color: #0f172a; line-height: 1.35; margin-bottom: 8px; }
+  .resumo { font-size: 12.5px; color: #475569; line-height: 1.5; margin-bottom: 10px; }
+
+  .pontos { margin-bottom: 10px; }
+  .pontos ul { list-style: none; }
+  .pontos ul li {
+    font-size: 11.5px; color: #334155;
+    padding: 2px 0 2px 13px;
+    position: relative; line-height: 1.4;
+  }
+  .pontos ul li::before {
+    content: "•"; position: absolute; left: 0;
+    color: {{prioridade_cor}}; font-weight: 700;
+  }
+
+  .info-row {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .tag {
+    background: #f1f5f9; border: 1px solid #e2e8f0;
+    color: #475569; font-size: 10px; font-weight: 500;
+    padding: 2px 8px; border-radius: 20px;
+    white-space: nowrap;
+  }
+  .tag.local { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+  .tag.entidade { background: #faf5ff; border-color: #e9d5ff; color: #7c3aed; }
+  .tag.conteudo-rico { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+  .tag.conteudo-medio { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+  .tag.conteudo-simples { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+
+  .justificativa {
+    font-size: 10px; color: #94a3b8; font-style: italic;
+    margin-bottom: 10px; line-height: 1.4;
+    border-left: 2px solid #e2e8f0; padding-left: 8px;
+  }
+
+  .footer {
+    border-top: 1px solid #f1f5f9;
+    padding: 9px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fafafa;
+  }
+  .meta { font-size: 10.5px; color: #94a3b8; }
+  .score-wrap { display: flex; align-items: center; gap: 5px; }
+  .score-label { font-size: 10px; color: #94a3b8; }
+  .score-bar-bg { width: 70px; height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+  .score-bar { height: 100%; background: {{prioridade_cor}}; border-radius: 3px; width: calc({{score}} * 1%); }
+  .score-num { font-size: 11px; font-weight: 700; color: #475569; }
+</style>
+</head>
+<body>
+<div id="card">
+  <div class="header">
+    <div class="header-left">
+      <span class="badge">{{prioridade}}</span>
+      <span class="editoria">{{editoria}}</span>
+    </div>
+    <span class="ia-badge">{{ia_badge}}</span>
+  </div>
+
+  <div class="body">
+    <div class="titulo">{{titulo}}</div>
+    <div class="resumo">{{resumo}}</div>
+    <div class="pontos"><ul>{{pontos_chave}}</ul></div>
+
+    <div class="info-row">
+      {{localidade_tag}}
+      {{entidades_tags}}
+      {{conteudo_tag}}
+    </div>
+
+    {{justificativa_html}}
+  </div>
+
+  <div class="footer">
+    <span class="meta">{{fonte}} · {{data}}</span>
+    <div class="score-wrap">
+      <span class="score-label">score</span>
+      <div class="score-bar-bg"><div class="score-bar"></div></div>
+      <span class="score-num">{{score}}</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

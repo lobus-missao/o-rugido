@@ -1,0 +1,38 @@
+# Ambiente
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Banco e dados gerados
+data/ai_batches/*.json
+data/ai_batches/*.txt
+data/ai_results/*.json
+data/cards/*.png
+*.db
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code — configurações locais com tokens e permissões
+.claude/settings.local.json
+.claude/settings.json
+
+# MCP — contém tokens de API
+.mcp.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,142 @@
+{
+  "name": "News Radar — 01 Coleta Recorrente",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "sched-coleta",
+      "name": "⏰ A cada 30 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.NEWS_RADAR_API }}/pipeline/collect",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"limit_per_feed\": 30\n}",
+        "options": {}
+      },
+      "id": "http-collect",
+      "name": "1. Coletar feeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.NEWS_RADAR_API }}/pipeline/rank",
+        "options": {}
+      },
+      "id": "http-rank",
+      "name": "2. Calcular ranking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "ok-check",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-rank",
+      "name": "Rank falhou?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const collect = $('1. Coletar feeds').first().json;\nconst rank = $('2. Calcular ranking').first().json;\nconst msg = `[News Radar] Coleta/Rank com erro.\\nCollect ok=${collect.ok}\\nRank: ${JSON.stringify(rank.error || rank.ok)}`;\nreturn [{ json: { ok: false, message: msg } }];"
+      },
+      "id": "log-erro-coleta",
+      "name": "Log erro coleta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 200]
+    }
+  ],
+  "connections": {
+    "⏰ A cada 30 min": {
+      "main": [
+        [
+          {
+            "node": "1. Coletar feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Coletar feeds": {
+      "main": [
+        [
+          {
+            "node": "2. Calcular ranking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Calcular ranking": {
+      "main": [
+        [
+          {
+            "node": "Rank falhou?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank falhou?": {
+      "main": [
+        [
+          {
+            "node": "Log erro coleta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "news-radar"
+    }
+  ]
+}

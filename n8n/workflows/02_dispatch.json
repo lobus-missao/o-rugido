@@ -1,0 +1,327 @@
+{
+  "name": "News Radar — 02 Dispatch Editorial",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "sched-morning",
+      "name": "⏰ 06:30 Manhã",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 11 * * *"
+            }
+          ]
+        }
+      },
+      "id": "sched-noon",
+      "name": "⏰ 11:30 Meio-dia",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 400]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 17 * * *"
+            }
+          ]
+        }
+      },
+      "id": "sched-evening",
+      "name": "⏰ 17:30 Tarde",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.NEWS_RADAR_API }}/api/dispatch/run",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"edition\": \"morning\",\n  \"scope\": \"{{ $vars.NEWS_RADAR_SCOPE }}\",\n  \"top\": 3,\n  \"dry_run\": false\n}",
+        "options": {}
+      },
+      "id": "dispatch-morning",
+      "name": "Dispatch Manhã",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.NEWS_RADAR_API }}/api/dispatch/run",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"edition\": \"noon\",\n  \"scope\": \"{{ $vars.NEWS_RADAR_SCOPE }}\",\n  \"top\": 3,\n  \"dry_run\": false\n}",
+        "options": {}
+      },
+      "id": "dispatch-noon",
+      "name": "Dispatch Meio-dia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.NEWS_RADAR_API }}/api/dispatch/run",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"edition\": \"evening\",\n  \"scope\": \"{{ $vars.NEWS_RADAR_SCOPE }}\",\n  \"top\": 3,\n  \"dry_run\": false\n}",
+        "options": {}
+      },
+      "id": "dispatch-evening",
+      "name": "Dispatch Tarde",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "ok-check-morning",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-morning",
+      "name": "Manhã falhou?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [560, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "ok-check-noon",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-noon",
+      "name": "Meio-dia falhou?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [560, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "ok-check-evening",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-evening",
+      "name": "Tarde falhou?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [560, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nreturn [{ json: { ok: false, edition: 'morning', error: result.error || 'Dispatch morning falhou', dispatches: result.count || 0 } }];"
+      },
+      "id": "log-erro-morning",
+      "name": "Log erro manhã",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nreturn [{ json: { ok: false, edition: 'noon', error: result.error || 'Dispatch noon falhou', dispatches: result.count || 0 } }];"
+      },
+      "id": "log-erro-noon",
+      "name": "Log erro meio-dia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nreturn [{ json: { ok: false, edition: 'evening', error: result.error || 'Dispatch evening falhou', dispatches: result.count || 0 } }];"
+      },
+      "id": "log-erro-evening",
+      "name": "Log erro tarde",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 520]
+    }
+  ],
+  "connections": {
+    "⏰ 06:30 Manhã": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Manhã",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ 11:30 Meio-dia": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Meio-dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ 17:30 Tarde": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Tarde",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Manhã": {
+      "main": [
+        [
+          {
+            "node": "Manhã falhou?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Meio-dia": {
+      "main": [
+        [
+          {
+            "node": "Meio-dia falhou?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Tarde": {
+      "main": [
+        [
+          {
+            "node": "Tarde falhou?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manhã falhou?": {
+      "main": [
+        [
+          {
+            "node": "Log erro manhã",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Meio-dia falhou?": {
+      "main": [
+        [
+          {
+            "node": "Log erro meio-dia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Tarde falhou?": {
+      "main": [
+        [
+          {
+            "node": "Log erro tarde",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "news-radar"
+    }
+  ]
+}
