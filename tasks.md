@@ -39,13 +39,20 @@
   - Retorna `[]` se edição ativa já existe; loga warning claro
   - Testes: `tests/test_dispatch_idempotency.py` (7 casos)
   - Docs: `docs/manual-validation-phase-1.md`
-- [ ] Adicionar `APScheduler` ao `requirements.txt`
-- [ ] Criar `src/news_radar/scheduler.py` com jobs de coleta e dispatch
-- [ ] Integrar scheduler ao `api_server.py` (ativação via `NEWS_RADAR_SCHEDULER=1`)
-- [ ] Atualizar `.env.example` com variável `NEWS_RADAR_SCHEDULER`
-- [ ] Dashboard `1_Operacao.py`: exibir status do scheduler e próxima execução
-- [ ] Testar: desligar n8n, confirmar que coleta continua
-- [ ] Documentar: `docs/N8N_WORKFLOWS.md` atualizado com nota sobre scheduler interno
+- [x] Adicionar `APScheduler>=3.10,<4.0` ao `requirements.txt`
+- [x] Criar `src/news_radar/scheduler.py` com jobs de coleta e dispatch
+  - `_job_collect_and_rank()` — collect_feeds + rank_all a cada 30 min
+  - `_job_dispatch(edition, scope, top)` — cron 06:30 / 11:30 / 17:30
+  - `start_scheduler()` — não inicia em contexto de teste, não inicia se desativado
+  - `get_status()` — retorna estado + próximas execuções
+  - `rank_all()` extraído para `ranker.py` (reutilizável, sem duplicação)
+  - Testes: `tests/test_scheduler.py` (15 casos)
+- [x] Integrar scheduler ao `api_server.py` (ativação via `NEWS_RADAR_SCHEDULER=1`)
+  - Endpoint `GET /api/scheduler/status` adicionado
+- [x] Atualizar `.env.example` com `NEWS_RADAR_SCHEDULER=0`, `NEWS_RADAR_DISPATCH_SCOPE`, `NEWS_RADAR_DISPATCH_TOP`
+- [x] Dashboard `1_Operacao.py`: exibir status do scheduler e horários agendados
+- [ ] Testar: desligar n8n, confirmar que coleta continua (validação manual pendente)
+- [x] Documentar: `docs/N8N_WORKFLOWS.md` atualizado com seção sobre scheduler interno
 
 ### Riscos
 - Duplo disparo se n8n e scheduler ativos simultâneo → **RESOLVIDO**: guard de idempotência

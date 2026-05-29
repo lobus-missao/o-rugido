@@ -238,3 +238,62 @@ def combine_with_ai(auto_score: float, ai_score: float | None) -> float:
     if ai_score is None:
         return round(float(auto_score), 2)
     return round(clamp(float(auto_score) * 0.58 + float(ai_score) * 0.42), 2)
+
+
+def rank_all() -> int:
+    """Recalcula auto_score_* e final_score_* para todos os artigos no banco.
+
+    Extrai a mesma lógica de cmd_rank() do CLI, tornando-a reutilizável
+    pelo scheduler interno e por qualquer outro chamador Python.
+
+    Retorna o número de artigos atualizados.
+    """
+    import psycopg2.extras
+
+    from .db import connect, init_db, json_dumps
+
+    init_db()
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, title, summary, source_scope, source_trust,"
+                " published_at, ai_score FROM articles"
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+
+    batch = []
+    for article in rows:
+        scores = automatic_scores(article)
+        ai = float(article["ai_score"]) if article["ai_score"] is not None else None
+        batch.append((
+            scores["auto_score_brasil"],
+            scores["auto_score_piaui"],
+            scores["auto_score_teresina"],
+            combine_with_ai(scores["auto_score_brasil"], ai),
+            combine_with_ai(scores["auto_score_piaui"], ai),
+            combine_with_ai(scores["auto_score_teresina"], ai),
+            json_dumps(scores.get("reasons", [])),
+            article["id"],
+        ))
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+            psycopg2.extras.execute_batch(
+                cur,
+                """
+                UPDATE articles SET
+                    auto_score_brasil   = %s,
+                    auto_score_piaui    = %s,
+                    auto_score_teresina = %s,
+                    final_score_brasil  = %s,
+                    final_score_piaui   = %s,
+                    final_score_teresina= %s,
+                    score_reasons_json  = %s
+                WHERE id = %s
+                """,
+                batch,
+                page_size=100,
+            )
+
+    return len(batch)

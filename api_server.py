@@ -266,6 +266,22 @@ def api_telegram_callback():
     return api_json(result, 200 if result.get("ok") else 400)
 
 
+@app.get("/api/scheduler/status")
+def api_scheduler_status():
+    """Retorna estado do scheduler interno (válido apenas neste processo)."""
+    from news_radar.scheduler import get_status
+    return api_json({"ok": True, **get_status()})
+
+
+# ---------------------------------------------------------------------------
+# Inicialização do scheduler interno (opcional)
+# Ativação: NEWS_RADAR_SCHEDULER=1 no .env
+# Aviso: BackgroundScheduler é single-process. Ver scheduler.py para detalhes.
+# ---------------------------------------------------------------------------
+from news_radar.scheduler import start_scheduler as _start_scheduler
+_start_scheduler()
+
+
 if __name__ == "__main__":
     print("News Radar API — http://localhost:8888")
     app.run(host="0.0.0.0", port=8888, debug=False)

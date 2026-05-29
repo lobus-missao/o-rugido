@@ -7,6 +7,8 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 import streamlit as st
 from news_radar.dash_utils import sidebar_controls, run_cli, fmt_dt, load_feeds, save_feeds
 from news_radar.dashboard_queries import pipeline_health
+from news_radar.scheduler import _is_enabled as scheduler_is_enabled
+from news_radar.dispatch import EDITIONS
 from news_radar.db import connect
 import feedparser
 
@@ -40,6 +42,31 @@ try:
         st.caption(f"Última coleta: {fmt_dt(lc['last'])} · {lc.get('total_collected', 0)} artigos · {lc.get('errors', 0)} erros de feed")
 except Exception as e:
     st.error(f"Erro: {e}")
+
+st.divider()
+
+# ── Scheduler Interno ─────────────────────────────────────────────────────────
+st.subheader("Scheduler Interno")
+if scheduler_is_enabled():
+    st.success("Scheduler ativo (NEWS_RADAR_SCHEDULER=1)")
+    st.caption(
+        "O scheduler interno está habilitado e assume coleta e dispatch automáticos. "
+        "O n8n pode ser desativado com segurança — o guard de idempotência em "
+        "create_dispatch() evita envios duplicados caso ambos rodem simultaneamente."
+    )
+    st.markdown("**Horários agendados:**")
+    sched_cols = st.columns(4)
+    sched_cols[0].metric("Coleta RSS", "a cada 30 min")
+    for i, (edition, info) in enumerate(EDITIONS.items(), start=1):
+        h = info["dispatch_hour"]
+        m = info["dispatch_min"]
+        sched_cols[i].metric(f"Dispatch {edition}", f"{h:02d}:{m:02d}")
+else:
+    st.info(
+        "Scheduler interno desativado (NEWS_RADAR_SCHEDULER=0). "
+        "O n8n é o scheduler atual. Para ativar o scheduler interno, "
+        "defina NEWS_RADAR_SCHEDULER=1 no .env e reinicie a API."
+    )
 
 st.divider()
 

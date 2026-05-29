@@ -4,6 +4,33 @@ Dois workflows cobrem toda a automação editorial. O Python controla 100% da l�
 
 ---
 
+## Scheduler Interno (alternativa ao n8n)
+
+A partir da Fase 1, o sistema tem um **scheduler interno opcional** baseado em APScheduler
+que pode substituir o n8n como agendador.
+
+| Modo | Scheduler | Ativação |
+|------|-----------|---------|
+| Padrão (atual) | n8n | — |
+| Interno | APScheduler | `NEWS_RADAR_SCHEDULER=1` no `.env` |
+
+**Como ativar o scheduler interno:**
+1. Adicionar `NEWS_RADAR_SCHEDULER=1` ao `.env`
+2. Reiniciar `api_server.py`
+3. Confirmar em `GET /api/scheduler/status` que `running: true`
+4. (Opcional) Desabilitar os workflows do n8n para evitar duplo disparo
+
+**Segurança durante transição:** o guard de idempotência em `create_dispatch()`
+bloqueia envios duplicados ao Telegram caso n8n e scheduler interno disparem
+ao mesmo tempo. É seguro ter ambos ativos temporariamente.
+
+**Para desativar:** `NEWS_RADAR_SCHEDULER=0` (ou remover a variável) e reiniciar.
+
+**⚠️ Aviso multi-worker:** o scheduler interno usa `BackgroundScheduler`, compatível
+apenas com Flask single-process. Ver `src/news_radar/scheduler.py` para detalhes.
+
+---
+
 ## Estratégia Telegram: Estratégia A (telegram_poller.py)
 
 O `telegram_poller.py` é o único processador de callbacks do Telegram no MVP local.

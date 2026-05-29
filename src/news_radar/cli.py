@@ -17,7 +17,7 @@ from .ai_batches import (
 from .collector import collect_feeds
 from .config import OLLAMA_MODEL
 from .db import connect, init_db, json_dumps
-from .ranker import automatic_scores, combine_with_ai
+from .ranker import automatic_scores, combine_with_ai, rank_all
 from .repository import SCORE_COLUMN, stats, top_articles, update_card_status
 
 
@@ -32,50 +32,8 @@ def cmd_collect(args) -> None:
 
 
 def cmd_rank(args) -> None:
-    init_db()
-
-    # Calcula scores em memória antes de abrir qualquer transação
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, title, summary, source_scope, source_trust, published_at, ai_score FROM articles")
-            rows = [dict(r) for r in cur.fetchall()]
-
-    batch = []
-    for article in rows:
-        scores = automatic_scores(article)
-        ai_score = float(article["ai_score"]) if article["ai_score"] is not None else None
-        batch.append((
-            scores["auto_score_brasil"],
-            scores["auto_score_piaui"],
-            scores["auto_score_teresina"],
-            combine_with_ai(scores["auto_score_brasil"], ai_score),
-            combine_with_ai(scores["auto_score_piaui"], ai_score),
-            combine_with_ai(scores["auto_score_teresina"], ai_score),
-            json_dumps(scores.get("reasons", [])),
-            article["id"],
-        ))
-
-    # Atualiza tudo em uma única transação rápida
-    with connect() as conn:
-        with conn.cursor() as cur:
-            psycopg2.extras.execute_batch(
-                cur,
-                """
-                UPDATE articles SET
-                    auto_score_brasil = %s,
-                    auto_score_piaui = %s,
-                    auto_score_teresina = %s,
-                    final_score_brasil = %s,
-                    final_score_piaui = %s,
-                    final_score_teresina = %s,
-                    score_reasons_json = %s
-                WHERE id = %s
-                """,
-                batch,
-                page_size=100,
-            )
-
-    print(f"Ranking recalculado para {len(batch)} noticias.")
+    count = rank_all()
+    print(f"Ranking recalculado para {count} noticias.")
 
 
 def cmd_show(args) -> None:
