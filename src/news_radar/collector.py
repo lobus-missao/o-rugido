@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import traceback
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -12,6 +13,8 @@ from .config import load_feeds_config
 from .db import connect, init_db, json_dumps, utc_now
 from .ranker import automatic_scores
 from .text_utils import article_id, canonicalize_url, strip_html, title_signature
+
+_logger = logging.getLogger(__name__)
 
 
 def entry_published_at(entry: Any) -> datetime | None:
@@ -180,6 +183,34 @@ def upsert_article(conn, item: dict[str, Any]) -> bool:
         return cur.rowcount > 0
 
 
+def _try_update_source_status(
+    source_name: str,
+    status: str,
+    collected: int,
+    error: str | None,
+) -> None:
+    """Atualiza status de monitoramento na tabela sources (best-effort).
+
+    Não quebra a coleta se a tabela não existir ou a fonte não estiver cadastrada.
+    """
+    try:
+        from .sources import get_source_by_name, mark_source_error, mark_source_success
+
+        src = get_source_by_name(source_name)
+        if src is None:
+            return  # Fonte ainda não está na tabela sources — feeds.yaml ativo
+        if status in ("ok", "warning"):
+            mark_source_success(src["id"], collected_count=collected)
+        else:
+            mark_source_error(src["id"], error_msg=(error or status)[:500])
+    except Exception as exc:
+        _logger.warning(
+            "Falha ao atualizar status da fonte '%s' em sources: %s",
+            source_name,
+            str(exc)[:120],
+        )
+
+
 def collect_feeds(limit_per_feed: int = 30) -> dict[str, Any]:
     init_db()
     config = load_feeds_config()
@@ -242,5 +273,8 @@ def collect_feeds(limit_per_feed: int = 30) -> dict[str, Any]:
                         utc_now(),
                     ),
                 )
+
+            # Atualiza monitoramento na tabela sources (best-effort, não quebra a coleta)
+            _try_update_source_status(source.get("name", ""), status, collected, error)
 
     return result

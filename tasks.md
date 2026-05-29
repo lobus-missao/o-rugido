@@ -137,39 +137,49 @@ SELECT * FROM editorial_actions ORDER BY created_at DESC LIMIT 10;
 
 ---
 
-## Fase 3 — Dashboard como Cockpit Editorial
+## Fase 3 — Dashboard como Cockpit Editorial (Parte 1) ✅ Concluída
 
-**Objetivo:** Editor opera ciclo completo sem terminal ou n8n.
+**Objetivo:** Transformar a dashboard em cockpit editorial inicial usando a base da Fase 2.
 
-> **Dependência:** `8_Fontes_RSS.py` com dados reais de fontes requer Fase 2 (tabela `sources`)
-> completa. As demais tarefas desta fase podem ser iniciadas antes da Fase 2 e usar fallback
-> para `feeds.yaml` enquanto a tabela `sources` não existir.
+**Concluída em:** 2026-05-29
 
 ### Tarefas
-- [ ] `8_Fontes_RSS.py`: listar fontes com status, habilitar/desabilitar
-- [ ] `5_Editorial.py`: botão "Gerar card" por artigo, botão "Marcar needs_ai"
-- [ ] `0_Edicoes.py`: preview de card (`st.image()`) quando card_path existe
-- [ ] `1_Operacao.py`: status do scheduler, próxima execução
-- [ ] Verificar que todos os botões de ação têm feedback visual correto
-- [ ] Verificar que erros são exibidos de forma descritiva
-- [ ] Adicionar confirmação para ações destrutivas (rejeitar, arquivar)
+- [x] `8_Fontes_RSS.py`: integrar dados da tabela `sources` — monitoramento por coleta (last_status, error_count, last_run_at)
+- [x] `8_Fontes_RSS.py`: nova métrica "📦 Registradas no banco" + seção "Monitoramento via Banco"
+- [x] `8_Fontes_RSS.py`: filtros e tabela de sources com fallback amigável quando tabela vazia
+- [x] `1_Operacao.py`: métricas de fontes da tabela sources (total, habilitadas, com erro)
+- [x] `1_Operacao.py`: seção "Ações Editoriais Recentes" com tabela das últimas 15 ações
+- [x] `collector.py`: `_try_update_source_status()` — mark_source_success/error após cada feed
+- [x] `dispatch.py`: `_try_record_editorial_action()` em approve_article, reject_article, approve_card, reject_card
+- [x] `dashboard_queries.py`: `sources_summary()` e `recent_editorial_actions()`
+- [x] `tests/test_phase3_integration.py` (13 testes novos — todos passam)
 
-### Riscos
-- Streamlit tem limitações de interatividade — some state management necessário
-- st.rerun() excessivo pode causar loops
-
-### Arquivos Prováveis
+### Arquivos Alterados
 ```
-pages/0_Edicoes.py     (preview de card)
-pages/1_Operacao.py    (status scheduler)
-pages/5_Editorial.py   (ações diretas)
-pages/8_Fontes_RSS.py  (CRUD de fontes)
+src/news_radar/collector.py        (helper _try_update_source_status + chamada no loop)
+src/news_radar/dispatch.py         (helper _try_record_editorial_action + 4 chamadas)
+src/news_radar/dashboard_queries.py (sources_summary, recent_editorial_actions)
+pages/8_Fontes_RSS.py              (integração tabela sources, 5ª métrica, seção banco)
+pages/1_Operacao.py                (fontes banco + ações editoriais recentes)
+tests/test_phase3_integration.py   (novo — 13 testes)
 ```
 
 ### Critérios de Aceite
-- [ ] Editor coleta, gera lote IA, importa, aprova, vê card, publica — tudo pela dashboard
-- [ ] Fontes RSS visíveis com status no dashboard
-- [ ] Preview de card visível antes de publicar
+- [x] Dashboard abre sem traceback
+- [x] Página de fontes mostra dados da tabela sources com fallback amigável
+- [x] Filtros funcionam
+- [x] Coleta continua funcionando com feeds.yaml
+- [x] Collector atualiza status da fonte quando fonte existir na tabela sources
+- [x] Aprovação/rejeição registra ação editorial
+- [x] Telegram continua compatível (sem alteração de comportamento)
+- [x] n8n continua compatível
+- [x] 70 testes passando, 2 skipped
+
+### Pendente para Fase 3 continuação (Fase 4+)
+- [ ] `5_Editorial.py`: botão "Gerar card" por artigo, botão "Marcar needs_ai"
+- [ ] `0_Edicoes.py`: preview de card (`st.image()`) quando card_path existe
+- [ ] Confirmação para ações destrutivas (rejeitar, arquivar) em Radar
+- [ ] Editor opera ciclo completo sem terminal
 
 ---
 

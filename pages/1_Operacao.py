@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
 import streamlit as st
 from news_radar.dash_utils import sidebar_controls, run_cli, fmt_dt, load_feeds, save_feeds
-from news_radar.dashboard_queries import pipeline_health
+from news_radar.dashboard_queries import pipeline_health, sources_summary, recent_editorial_actions
 from news_radar.scheduler import _is_enabled as scheduler_is_enabled
 from news_radar.dispatch import EDITIONS
 from news_radar.db import connect
@@ -42,6 +42,18 @@ try:
         st.caption(f"Última coleta: {fmt_dt(lc['last'])} · {lc.get('total_collected', 0)} artigos · {lc.get('errors', 0)} erros de feed")
 except Exception as e:
     st.error(f"Erro: {e}")
+
+# ── Fontes no Banco ───────────────────────────────────────────────────────────
+try:
+    src_stats = sources_summary()
+    if src_stats["total"] > 0:
+        st.subheader("Fontes (tabela sources)")
+        sc1, sc2, sc3 = st.columns(3)
+        sc1.metric("📦 Total no banco", src_stats["total"])
+        sc2.metric("✅ Habilitadas", src_stats["enabled"])
+        sc3.metric("❌ Com erro acumulado", src_stats["with_error"])
+except Exception:
+    pass
 
 st.divider()
 
@@ -127,3 +139,31 @@ try:
         st.dataframe(df, use_container_width=True, height=350)
 except Exception as e:
     st.error(f"Erro: {e}")
+
+# ── Ações Editoriais Recentes ─────────────────────────────────────────────────
+st.divider()
+st.subheader("Ações Editoriais Recentes")
+try:
+    actions = recent_editorial_actions(limit=15)
+    if actions:
+        import pandas as pd
+        df_actions = pd.DataFrame([
+            {
+                "Quando": fmt_dt(a.get("created_at"), 16),
+                "Ação": a.get("action", ""),
+                "Ator": a.get("actor", ""),
+                "De": a.get("from_status") or "—",
+                "Para": a.get("to_status") or "—",
+                "Artigo": (a.get("article_title") or "")[:60] or "—",
+                "Dispatch": a.get("dispatch_id") or "—",
+            }
+            for a in actions
+        ])
+        st.dataframe(df_actions, use_container_width=True, height=320)
+    else:
+        st.info(
+            "Nenhuma ação editorial registrada ainda. "
+            "Ações de aprovação/rejeição serão registradas automaticamente a partir de agora."
+        )
+except Exception as e:
+    st.caption(f"Ações editoriais indisponíveis: {e}")

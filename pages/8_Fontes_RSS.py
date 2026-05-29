@@ -7,7 +7,8 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 import streamlit as st
 import feedparser
 from news_radar.dash_utils import sidebar_controls, load_feeds, save_feeds, fmt_dt
-from news_radar.dashboard_queries import source_health
+from news_radar.dashboard_queries import source_health, sources_summary
+from news_radar.sources import list_sources
 
 st.set_page_config(page_title="Fontes RSS · News Radar", page_icon="📡", layout="wide")
 sidebar_controls()
@@ -41,15 +42,29 @@ except Exception:
     health = []
     health_by_name = {}
 
+try:
+    db_summary = sources_summary()
+except Exception:
+    db_summary = {"total": 0, "enabled": 0, "with_error": 0, "by_scope": {}}
+
+try:
+    db_sources = list_sources()
+    db_sources_by_name = {s["name"]: s for s in db_sources}
+except Exception:
+    db_sources = []
+    db_sources_by_name = {}
+
 enabled = sum(1 for f in feeds if f.get("enabled", True))
 n_hot = sum(1 for h in health if h["classification"] == "quente")
 n_err = sum(1 for h in health if h["classification"] in ("instavel", "com_erro"))
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("📡 Total feeds", len(feeds))
-c2.metric("✅ Ativos", enabled)
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("📡 Total feeds (yaml)", len(feeds))
+c2.metric("✅ Ativos (yaml)", enabled)
 c3.metric("🔥 Fontes quentes", n_hot)
 c4.metric("⚠️ Com erro/instável", n_err)
+c5.metric("📦 Registradas no banco", db_summary["total"],
+          help="Fontes na tabela sources. Execute scripts/seed_sources.py para importar.")
 
 # ── Filtros ───────────────────────────────────────────────────────────────────
 col_f1, col_f2 = st.columns(2)
@@ -110,6 +125,18 @@ for i, feed in enumerate(feeds):
             st.markdown(f"**Classificação:** {cls_icon} {CLASS_LABEL.get(classification, classification)}")
             if error_rate:
                 st.markdown(f"**Taxa de erro:** {error_rate}%")
+
+            # Dados da tabela sources (Fase 2)
+            db_src = db_sources_by_name.get(name)
+            if db_src:
+                db_status = db_src.get("last_status") or "—"
+                db_errors = db_src.get("error_count", 0)
+                db_last = fmt_dt(db_src.get("last_run_at"), 16)
+                status_icon = "✅" if db_status == "ok" else ("❌" if db_status == "error" else "⬜")
+                st.caption(
+                    f"**Banco:** {status_icon} status={db_status} · "
+                    f"erros acumulados={db_errors} · última atualização={db_last or '—'}"
+                )
 
         with col_b:
             new_enabled = st.toggle("Ativo", value=is_enabled, key=f"tog_{i}_{name}")
@@ -173,3 +200,60 @@ with st.form("add_feed", clear_on_submit=True):
             save_feeds(feeds)
             st.success(f"Feed **{new_name}** adicionado!")
             st.rerun()
+
+# ── Monitoramento via Banco (tabela sources) ──────────────────────────────────
+st.divider()
+st.subheader("📦 Monitoramento via Banco (tabela sources)")
+
+if not db_sources:
+    st.info(
+        "A tabela `sources` está vazia. "
+        "Execute `python scripts/seed_sources.py` para importar as fontes do `feeds.yaml`. "
+        "Após a importação, o monitoramento por coleta aparecerá aqui."
+    )
+else:
+    db_err = db_summary.get("with_error", 0)
+    db_enabled = db_summary.get("enabled", 0)
+    db_total = db_summary.get("total", 0)
+
+    mc1, mc2, mc3 = st.columns(3)
+    mc1.metric("Total no banco", db_total)
+    mc2.metric("Habilitadas", db_enabled)
+    mc3.metric("Com erro acumulado", db_err)
+
+    # Filtros para a tabela sources
+    col_sf1, col_sf2 = st.columns(2)
+    with col_sf1:
+        db_scope_filter = st.multiselect(
+            "Escopo (banco)", ["brasil", "piaui", "teresina"],
+            default=["brasil", "piaui", "teresina"], key="db_scope"
+        )
+    with col_sf2:
+        db_status_filter = st.multiselect(
+            "Status (banco)", ["ok", "error", "—"],
+            default=["ok", "error", "—"], key="db_status"
+        )
+
+    import pandas as pd
+    rows = []
+    for s in db_sources:
+        last_status = s.get("last_status") or "—"
+        if s.get("scope") not in db_scope_filter:
+            continue
+        if last_status not in db_status_filter:
+            continue
+        rows.append({
+            "Nome": s["name"],
+            "Escopo": s.get("scope", ""),
+            "Tipo": s.get("source_type", "rss"),
+            "Habilitada": "✅" if s.get("enabled") else "❌",
+            "Status": last_status,
+            "Erros": s.get("error_count", 0),
+            "Última atualização": fmt_dt(s.get("last_run_at"), 16) or "—",
+        })
+
+    if rows:
+        df = pd.DataFrame(rows)
+        st.dataframe(df, use_container_width=True, height=350)
+    else:
+        st.info("Nenhuma fonte corresponde aos filtros selecionados.")

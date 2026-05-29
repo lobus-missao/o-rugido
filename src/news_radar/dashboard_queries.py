@@ -693,3 +693,57 @@ def opportunity_score(article: dict) -> tuple[float, str]:
         explanation = "Baixa oportunidade"
 
     return round(score, 1), explanation
+
+
+# ── Fontes (tabela sources — Fase 2) ─────────────────────────────────────────
+
+def sources_summary() -> dict:
+    """Estatísticas da tabela sources. Retorna zeros se a tabela estiver vazia ou não existir."""
+    _empty: dict = {"total": 0, "enabled": 0, "with_error": 0, "by_scope": {}}
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        COUNT(*) total,
+                        COUNT(*) FILTER (WHERE enabled = TRUE) enabled,
+                        COUNT(*) FILTER (WHERE last_status = 'error') with_error
+                    FROM sources
+                """)
+                row = dict(cur.fetchone())
+                cur.execute(
+                    "SELECT scope, COUNT(*) n FROM sources GROUP BY scope ORDER BY scope"
+                )
+                by_scope = {r["scope"]: r["n"] for r in cur.fetchall()}
+        return {
+            "total": int(row["total"]),
+            "enabled": int(row["enabled"]),
+            "with_error": int(row["with_error"]),
+            "by_scope": by_scope,
+        }
+    except Exception:
+        return _empty
+
+
+# ── Auditoria editorial (tabela editorial_actions — Fase 2) ───────────────────
+
+def recent_editorial_actions(limit: int = 10) -> list[dict]:
+    """Últimas ações editoriais registradas. Lista vazia se tabela não existir."""
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT ea.id, ea.article_id, ea.dispatch_id, ea.action, ea.actor,
+                           ea.from_status, ea.to_status, ea.notes, ea.created_at,
+                           a.title AS article_title
+                    FROM editorial_actions ea
+                    LEFT JOIN articles a ON ea.article_id = a.id
+                    ORDER BY ea.created_at DESC
+                    LIMIT %s
+                    """,
+                    (limit,),
+                )
+                return [dict(r) for r in cur.fetchall()]
+    except Exception:
+        return []

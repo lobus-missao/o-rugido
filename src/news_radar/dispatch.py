@@ -50,6 +50,34 @@ def _tg(method: str, **kwargs) -> dict:
     return r.json()
 
 
+def _try_record_editorial_action(
+    action: str,
+    actor: str,
+    article_id: str | None = None,
+    dispatch_id: int | None = None,
+    from_status: str | None = None,
+    to_status: str | None = None,
+) -> None:
+    """Registra ação editorial (best-effort). Não quebra o fluxo se a tabela não existir."""
+    try:
+        from .editorial import record_editorial_action
+        record_editorial_action(
+            action=action,
+            actor=actor,
+            article_id=article_id,
+            dispatch_id=dispatch_id,
+            from_status=from_status,
+            to_status=to_status,
+        )
+    except Exception as exc:
+        _logger.warning(
+            "Falha ao registrar ação editorial '%s' (dispatch=%s): %s",
+            action,
+            dispatch_id,
+            str(exc)[:120],
+        )
+
+
 def get_dispatch(dispatch_id: int) -> dict | None:
     with connect() as conn:
         with conn.cursor() as cur:
@@ -272,6 +300,14 @@ def approve_article(
         article_reviewed_by=user,
         article_reviewed_at=utc_now(),
     )
+    _try_record_editorial_action(
+        action="approve_article",
+        actor=user,
+        article_id=dispatch.get("article_id"),
+        dispatch_id=dispatch_id,
+        from_status="pending_article",
+        to_status="article_approved",
+    )
 
     # Edita a mensagem original em-lugar mostrando aprovação
     _edit_article_message(
@@ -347,6 +383,14 @@ def reject_article(dispatch_id: int, user: str = "Editor") -> dict:
         article_reviewed_by=user,
         article_reviewed_at=utc_now(),
     )
+    _try_record_editorial_action(
+        action="reject_article",
+        actor=user,
+        article_id=dispatch.get("article_id"),
+        dispatch_id=dispatch_id,
+        from_status="pending_article",
+        to_status="article_rejected",
+    )
     _edit_article_message(
         dispatch.get("article_tg_message_id"),
         status_text="❌ REJEITADO",
@@ -396,6 +440,14 @@ def approve_card(dispatch_id: int, user: str = "Editor") -> dict:
         card_reviewed_at=now,
         ready_at=now,
     )
+    _try_record_editorial_action(
+        action="approve_card",
+        actor=user,
+        article_id=dispatch.get("article_id"),
+        dispatch_id=dispatch_id,
+        from_status="pending_card",
+        to_status="ready_to_publish",
+    )
     _edit_caption_remove_buttons(
         dispatch.get("card_tg_message_id"),
         f"✅ APROVADO para publicação por {user}"
@@ -420,6 +472,14 @@ def reject_card(dispatch_id: int, user: str = "Editor") -> dict:
         status="card_rejected",
         card_reviewed_by=user,
         card_reviewed_at=utc_now(),
+    )
+    _try_record_editorial_action(
+        action="reject_card",
+        actor=user,
+        article_id=dispatch.get("article_id"),
+        dispatch_id=dispatch_id,
+        from_status="pending_card",
+        to_status="card_rejected",
     )
     _edit_caption_remove_buttons(
         dispatch.get("card_tg_message_id"),
