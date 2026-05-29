@@ -222,34 +222,45 @@ tests/test_phase4_ai.py               (novo — 37 testes)
 
 ---
 
-## Fase 5 — Deduplicação e Agrupamento por Assunto
+## Fase 5 — Deduplicação e Agrupamento por Assunto ✅ Concluída
 
-**Objetivo:** Agrupar notícias sobre o mesmo evento em clusters.
+**Objetivo:** Agrupar notícias sobre o mesmo evento em clusters persistidos.
+
+**Concluída em:** 2026-05-29
 
 ### Tarefas
-- [ ] Criar tabelas `story_clusters` e `cluster_articles`
-- [ ] Implementar `src/news_radar/clusters.py` com algoritmo de agrupamento
-- [ ] Agrupamento por title_signature + keywords similares
-- [ ] Calcular `cluster_score` agregado
-- [ ] `4_Clusters.py`: listar clusters ativos, artigos por cluster
-- [ ] Ações: marcar artigo primário, arquivar cluster
+- [x] Criar tabelas `story_clusters` e `cluster_articles` em db.py (idempotentes)
+- [x] Criar `src/news_radar/clusters.py` com algoritmo 3 fases:
+  1. Agrupamento por `title_signature` exato (maior confiança)
+  2. Agrupamento por entidades comuns do `ai_json` (confiança média)
+  3. Agrupamento por keywords do título (menor confiança)
+- [x] `cluster_score = avg(final_score_brasil) × log2(source_count + 1)`
+- [x] IDs de cluster determinísticos (mesmo label+scope+tipo → mesmo ID)
+- [x] Persistência idempotente via `INSERT ... ON CONFLICT DO UPDATE`
+- [x] Funções: `cluster_articles_to_db`, `list_db_clusters`, `get_db_cluster_articles`, `set_primary_article`, `archive_cluster`, `cluster_stats`
+- [x] CLI: `python -m news_radar.cli cluster-articles --hours 72 --scope brasil`
+- [x] `pages/4_Clusters.py`: duas abas — banco (persistido) + em tempo real (in-memory)
+- [x] Ações na dashboard: arquivar cluster, definir artigo primário
+- [x] `tests/test_phase5_clusters.py` — 35 testes
 
-### Riscos
-- Custo computacional de similaridade com muitos artigos
-- Falsos positivos: artigos similares de assuntos distintos
-
-### Arquivos Prováveis
+### Arquivos Criados/Modificados
 ```
-src/news_radar/clusters.py   (novo)
-src/news_radar/db.py         (novas tabelas)
-pages/4_Clusters.py          (UI)
+src/news_radar/db.py               (story_clusters + cluster_articles + 4 índices)
+src/news_radar/clusters.py         (novo — módulo completo de clustering)
+src/news_radar/cli.py              (comando cluster-articles)
+pages/4_Clusters.py                (duas abas: banco + tempo real)
+tests/test_phase5_clusters.py      (novo — 35 testes)
 ```
 
 ### Critérios de Aceite
-- [ ] Artigos sobre mesmo evento agrupados automaticamente
-- [ ] Cluster_score calculado e exibido
-- [ ] Dashboard mostra clusters com contagem de fontes
-- [ ] Editor pode marcar artigo primário
+- [x] Tabelas criadas com `CREATE TABLE IF NOT EXISTS` (idempotentes)
+- [x] Artigos com mesma `title_signature` agrupados
+- [x] Artigos sem cluster não são afetados
+- [x] Cluster pode ser recalculado sem apagar artigos
+- [x] Dashboard mostra clusters com contagem de fontes e score
+- [x] Editor pode marcar artigo primário e arquivar cluster
+- [x] 138 testes passando, 2 skipped
+- [x] Coleta, ranking, IA, Telegram, scheduler e cards continuam compatíveis
 
 ---
 

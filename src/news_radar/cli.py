@@ -245,6 +245,17 @@ def cmd_stats(args) -> None:
     print(json.dumps(stats(), ensure_ascii=False, indent=2, default=_json_default))
 
 
+def cmd_cluster_articles(args) -> None:
+    from .clusters import cluster_articles_to_db
+    scope = args.scope if args.scope != "todos" else None
+    result = cluster_articles_to_db(
+        hours=args.hours,
+        min_size=args.min_size,
+        scope=scope,
+    )
+    print(json.dumps(result, ensure_ascii=False, indent=2, default=_json_default))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="news-radar",
@@ -327,6 +338,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("stats", help="Mostra estatisticas do banco.")
     p.set_defaults(func=cmd_stats)
+
+    p = sub.add_parser("cluster-articles", help="Agrupa artigos similares em clusters e persiste no banco.")
+    p.add_argument("--hours", type=int, default=72, help="Janela de artigos em horas (default: 72)")
+    p.add_argument("--min-size", type=int, default=2, help="Mínimo de artigos por cluster (default: 2)")
+    p.add_argument("--scope", choices=["brasil", "piaui", "teresina", "todos"], default="todos")
+    p.set_defaults(func=cmd_cluster_articles)
 
     return parser
 

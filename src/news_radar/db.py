@@ -154,6 +154,36 @@ SCHEMA_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_editorial_actions_dispatch ON editorial_actions(dispatch_id)",
     "CREATE INDEX IF NOT EXISTS idx_editorial_actions_created ON editorial_actions(created_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_editorial_actions_action ON editorial_actions(action)",
+    """
+    CREATE TABLE IF NOT EXISTS story_clusters (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        scope TEXT NOT NULL DEFAULT 'brasil',
+        cluster_type TEXT NOT NULL DEFAULT 'titulo_similar',
+        label TEXT,
+        article_count INTEGER NOT NULL DEFAULT 0,
+        source_count INTEGER NOT NULL DEFAULT 0,
+        cluster_score NUMERIC NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_story_clusters_scope ON story_clusters(scope)",
+    "CREATE INDEX IF NOT EXISTS idx_story_clusters_status ON story_clusters(status, updated_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_story_clusters_score ON story_clusters(cluster_score DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS cluster_articles (
+        cluster_id TEXT NOT NULL REFERENCES story_clusters(id) ON DELETE CASCADE,
+        article_id TEXT NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+        is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+        similarity_score NUMERIC,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (cluster_id, article_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_cluster_articles_article ON cluster_articles(article_id)",
+    "CREATE INDEX IF NOT EXISTS idx_cluster_articles_cluster ON cluster_articles(cluster_id)",
 ]
 
 
