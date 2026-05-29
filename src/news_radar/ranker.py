@@ -46,18 +46,22 @@ BRAZIL_TERMS = [
 ]
 
 PIAUI_TERMS = [
-    "piauí", "piaui", "teresina", "parnaíba", "parnaiba", "picos", "floriano",
-    "piripiri", "campo maior", "alegrete", "governo do piauí", "governo do piaui",
-    "alepi", "tce-pi", "tce pi", "mppi", "tjpi", "secretaria de estado",
+    "piauí", "piaui", "teresina", "parnaíba", "parnaiba", "floriano",
+    "piripiri", "campo maior", "alegrete do piaui", "governo do piauí", "governo do piaui",
+    "alepi", "tce-pi", "tce pi", "mppi", "tjpi",
     "rafael fontes", "rafael fonteles",
+    # "picos" removido — falso positivo em "picos de calor", "picos de energia", etc.
 ]
 
 TERESINA_TERMS = [
     "teresina", "prefeitura de teresina", "câmara municipal de teresina",
-    "camara municipal de teresina", "fms", "fundação municipal de saúde",
-    "fundacao municipal de saude", "semec", "strans", "eturb", "saad",
+    "camara municipal de teresina",
+    "fundação municipal de saúde", "fundacao municipal de saude",
+    "semec", "strans", "eturb", "saad",
     "arsete", "hut", "hospital de urgência de teresina", "hospital de urgencia de teresina",
-    "teresinense", "zona norte", "zona sul", "zona leste", "zona sudeste",
+    "teresinense",
+    # Removidos por serem genéricos demais (aplicam-se a qualquer cidade brasileira):
+    # "fms" — abreviação sem especificidade; "zona norte", "zona sul", "zona leste", "zona sudeste"
 ]
 
 POLITICAL_TERMS = [
