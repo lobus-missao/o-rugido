@@ -117,6 +117,43 @@ SCHEMA_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_dispatches_edition ON dispatches(edition_date, edition)",
     "CREATE INDEX IF NOT EXISTS idx_dispatches_status ON dispatches(status)",
     "CREATE INDEX IF NOT EXISTS idx_dispatches_article ON dispatches(article_id)",
+    """
+    CREATE TABLE IF NOT EXISTS sources (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        source_type TEXT NOT NULL DEFAULT 'rss',
+        scope TEXT NOT NULL DEFAULT 'brasil',
+        trust NUMERIC NOT NULL DEFAULT 0.5,
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        last_run_at TIMESTAMPTZ,
+        last_status TEXT,
+        error_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_sources_name ON sources(name)",
+    "CREATE INDEX IF NOT EXISTS idx_sources_scope ON sources(scope)",
+    "CREATE INDEX IF NOT EXISTS idx_sources_enabled ON sources(enabled)",
+    """
+    CREATE TABLE IF NOT EXISTS editorial_actions (
+        id SERIAL PRIMARY KEY,
+        article_id TEXT REFERENCES articles(id) ON DELETE SET NULL,
+        dispatch_id INTEGER REFERENCES dispatches(id) ON DELETE SET NULL,
+        action TEXT NOT NULL,
+        actor TEXT NOT NULL DEFAULT 'system',
+        from_status TEXT,
+        to_status TEXT,
+        notes TEXT,
+        metadata JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_editorial_actions_article ON editorial_actions(article_id)",
+    "CREATE INDEX IF NOT EXISTS idx_editorial_actions_dispatch ON editorial_actions(dispatch_id)",
+    "CREATE INDEX IF NOT EXISTS idx_editorial_actions_created ON editorial_actions(created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_editorial_actions_action ON editorial_actions(action)",
 ]
 
 

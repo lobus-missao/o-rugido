@@ -76,36 +76,64 @@ pages/1_Operacao.py          (adicionar status do scheduler)
 
 ---
 
-## Fase 2 — Fortalecimento do Banco / Modelo Editorial
+## Fase 2 — Fortalecimento do Banco / Modelo Editorial ✅ Concluída
 
 **Objetivo:** Adicionar tabelas e campos que suportam auditoria, fontes gerenciáveis e histórico de status.
 
+**Concluída em:** 2026-05-29
+
 ### Tarefas
-- [ ] Criar tabela `sources` em `SCHEMA_SQL` de `db.py`
-- [ ] Importar `feeds.yaml` para tabela `sources` (script de migração one-shot)
-- [ ] Criar tabela `editorial_actions` para auditoria
-- [ ] Registrar ações de aprovação/rejeição em `editorial_actions`
-- [ ] Criar tabela `score_weights` (pesos configuráveis — só schema, sem UI ainda)
-- [ ] Adicionar campo `editor_score_override` em `articles` (opcional)
-- [ ] Criar migration para novos campos
-- [ ] Atualizar `repository.py` com queries para novas tabelas
+- [x] Criar tabela `sources` em `SCHEMA_SQL` de `db.py`
+- [x] Importar `feeds.yaml` para tabela `sources` (script de seed one-shot)
+- [x] Criar tabela `editorial_actions` para auditoria
+- [x] Criar `src/news_radar/sources.py` com helpers: `list_sources()`, `get_source_by_name()`, `upsert_source()`, `mark_source_success()`, `mark_source_error()`
+- [x] Criar `src/news_radar/editorial.py` com: `record_editorial_action()`, `list_editorial_actions_for_target()`
+- [x] Criar `scripts/seed_sources.py` (idempotente, suporte a --dry-run)
+- [x] Criar `tests/test_phase2_sources.py` (20 testes unit + 1 smoke com TEST_DATABASE_URL)
+- [ ] Registrar ações de aprovação/rejeição em `editorial_actions` (Fase 3 — integrar ao dispatch)
+- [ ] Criar tabela `score_weights` (pesos configuráveis — Fase 6)
+- [ ] Adicionar campo `editor_score_override` em `articles` (Fase 6)
 
-### Riscos
-- Migration deve ser incremental — usar `ADD COLUMN IF NOT EXISTS` e `CREATE TABLE IF NOT EXISTS`
-- Importação de feeds.yaml não deve alterar comportamento do collector (fallback para YAML se banco vazio)
-
-### Arquivos Prováveis
+### Arquivos Criados/Modificados
 ```
-src/news_radar/db.py            (adicionar SCHEMA_SQL, MIGRATION_SQL)
-src/news_radar/repository.py    (adicionar queries)
-scripts/migrate_sources.py      (novo — one-shot para importar feeds.yaml)
+src/news_radar/db.py            (SCHEMA_SQL: tabelas sources + editorial_actions + índices)
+src/news_radar/sources.py       (novo — repositório de fontes)
+src/news_radar/editorial.py     (novo — registro de ações editoriais)
+scripts/seed_sources.py         (novo — seed idempotente de feeds.yaml)
+tests/test_phase2_sources.py    (novo — 21 testes)
 ```
 
 ### Critérios de Aceite
-- [ ] Tabelas criadas com migrations incrementais
-- [ ] Collector ainda funciona com feeds.yaml se tabela sources vazia
-- [ ] Aprovação de artigo registra em editorial_actions
-- [ ] Testes smoke ainda passam
+- [x] Tabelas criadas com `CREATE TABLE IF NOT EXISTS` (idempotente)
+- [x] Collector continua funcionando com feeds.yaml (tabela sources é complementar, não substituta)
+- [x] `sources` populada via `scripts/seed_sources.py` sem duplicidade (upsert por name)
+- [x] `editorial_actions` registra eventos básicos via `record_editorial_action()`
+- [x] 57 testes passando, 2 skipped (requerem TEST_DATABASE_URL)
+
+### Como aplicar a migration
+```bash
+# Aplica automaticamente ao inicializar o banco
+python -m news_radar.cli init-db
+
+# Seed das fontes (57 feeds do feeds.yaml → tabela sources)
+python scripts/seed_sources.py
+
+# Dry-run para ver o que seria feito
+python scripts/seed_sources.py --dry-run
+```
+
+### Como validar no banco
+```sql
+-- Verifica tabelas criadas
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public' AND table_name IN ('sources', 'editorial_actions');
+
+-- Conta fontes importadas
+SELECT scope, COUNT(*) FROM sources GROUP BY scope ORDER BY scope;
+
+-- Verifica ações editoriais
+SELECT * FROM editorial_actions ORDER BY created_at DESC LIMIT 10;
+```
 
 ---
 

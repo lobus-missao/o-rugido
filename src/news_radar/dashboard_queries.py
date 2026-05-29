@@ -61,7 +61,8 @@ def radar_articles(
 
     if priority:
         ph = ",".join(["%s"] * len(priority))
-        conditions.append(f"priority IN ({ph})")
+        # Inclui artigos sem priority (não processados por IA) junto com os filtrados
+        conditions.append(f"(priority IN ({ph}) OR priority IS NULL)")
         params.extend(priority)
 
     if with_ai is True:
