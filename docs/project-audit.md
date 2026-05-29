@@ -15,21 +15,23 @@ O News Radar RSS é uma plataforma editorial de monitoramento de notícias com f
 ```
 configs/feeds.yaml         → 57 feeds RSS configurados (brasil, piaui, teresina)
 src/news_radar/
-  config.py                → paths, env vars, DATABASE_URL
+  config.py                → paths, env vars, DATABASE_URL, OLLAMA_URL, TELEGRAM_*
   db.py                    → schema SQL, connect(), init_db(), migrações inline
   collector.py             → parse RSS, upsert artigos, log feed_runs
   ranker.py                → scoring automático por termos, recência, confiança
   repository.py            → top_articles(), stats(), update_card_status()
-  ai_batches.py            → make_ai_batches(), import_ai_result(), list/get
+  ai_batches.py            → make_ai_batches(), import_ai_result_detailed(), list/get
   ai_caller.py             → integração com Ollama (não usada no fluxo principal)
   card_renderer.py         → HTML template → Playwright → PNG
   dispatch.py              → edições morning/noon/evening → Telegram approval
   telegram_sender.py       → funções de envio direto ao Telegram
   text_utils.py            → canonicalize_url, title_signature, strip_html, count_terms
-  score_explainer.py       → (existe, mas não integrado ao dashboard principal)
+  score_explainer.py       → explain_score(): decomposição completa do score automático
+                             com labels em PT-BR e bônus geográficos. Módulo completo
+                             mas ainda não integrado às páginas do dashboard.
   dash_utils.py            → componentes Streamlit reutilizáveis
   dashboard_queries.py     → queries específicas para dashboard
-  cli.py                   → CLI com todos os comandos
+  cli.py                   → CLI com 15 subcomandos (ver seção CLI abaixo)
 api_server.py              → Flask na porta 8888, bridge n8n ↔ CLI/Python
 dashboard.py               → entrada Streamlit (página Radar)
 pages/                     → 9 páginas do dashboard multipage
@@ -248,6 +250,34 @@ Funciona com Playwright instalado. Dependência externa real.
 
 ---
 
+## 10.5 CLI — Comandos Disponíveis
+
+O CLI (`python -m news_radar.cli`) tem 15 subcomandos:
+
+| Comando | Função |
+|---------|--------|
+| `init-db` | Cria/atualiza banco com schema e migrations |
+| `collect` | Coleta RSS de todos os feeds habilitados |
+| `rank` | Recalcula todos os scores em batch (execute_batch) |
+| `show` | Lista top artigos no terminal por escopo |
+| `make-ai-batches` | Gera lotes JSON+prompt para IA externa |
+| `list-ai-batches` | Lista lotes com status |
+| `send-ai-batch` | Envia lote ao Ollama local (não usado no fluxo principal) |
+| `import-ai` | Importa JSON da IA para o banco |
+| `make-card` | Gera cards PNG via Playwright |
+| `update-card-status` | Atualiza status do card |
+| `send-card-telegram` | Envia card ao Telegram para aprovação |
+| `dispatch` | Cria dispatch editorial (morning/noon/evening) |
+| `mark-published` | Marca dispatch como publicado |
+| `telegram-webhook` | Configura webhook do Telegram |
+| `cleanup` | Remove artigos velhos sem IA, expira lotes pendentes |
+| `stats` | Estatísticas do banco |
+
+> **Nota sobre `cleanup`:** Remove artigos com `published_at < N dias`, `card_status != 'approved'`
+> e `ai_score IS NULL`. Não documentado nas specs — importante preservar este comportamento.
+
+---
+
 ## 11. Pontos Fortes
 
 1. **Lógica de negócio 100% no Python** — n8n é só scheduler
@@ -276,7 +306,7 @@ Funciona com Playwright instalado. Dependência externa real.
 9. **Sem retentativas de coleta** — se feedparser falha, não há retry automático
 10. **Sem validação de schema** — `ai_json` é JSONB sem enforcement de campos obrigatórios
 11. **Score formula hardcoded** — pesos não configuráveis pela dashboard sem alterar código
-12. **`score_explainer.py` existe mas não exibido** — feature incompleta
+12. **`score_explainer.py` existe e está completo** mas não integrado ao dashboard — `explain_score()` retorna decomposição completa com labels PT-BR, bônus geográficos e sinalização em linguagem natural. Feature pronta para integração na visualização de artigos.
 13. **Migrations inline em `init_db()`** — MIGRATION_SQL roda sempre; sem versionamento formal
 
 ---
@@ -317,7 +347,7 @@ Funciona com Playwright instalado. Dependência externa real.
 7. **Retry automático** em coleta de feeds com erro
 8. **Validação de schema do ai_json** antes de importar
 9. **Preview do card** antes de aprovar
-10. **Integrar score_explainer.py** na visualização de artigos
+10. **Integrar score_explainer.py** na visualização de artigos — módulo já completo, basta chamar `explain_score(article, scope)` e exibir `components` e `explanation` na página de artigo
 
 ---
 

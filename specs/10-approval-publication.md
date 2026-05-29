@@ -31,13 +31,25 @@ needs_ai           → marcado para processamento por IA
 ai_done            → IA processou, aguarda seleção editorial
 selected           → selecionado para edição
 sent_to_telegram   → enviado para aprovação via Telegram
-approved           → artigo aprovado
+approved           → artigo aprovado  ⚠️ ver nota abaixo
 rejected           → artigo rejeitado
-ready_to_publish   → card aprovado
-published          → publicado
+ready_to_publish   → card aprovado    ← escrito por approve_card()
+published          → publicado        ← escrito por mark_published()
 archived           → arquivado
-card_rejected      → card rejeitado
+card_rejected      → card rejeitado   ← escrito por reject_card()
 ```
+
+> **⚠️ Nota importante sobre `editorial_status = 'approved'`:**
+> Este estado **não é escrito pelo fluxo de dispatch atual**. `dispatch.approve_article()` atualiza
+> `dispatches.status = 'article_approved'`, mas não atualiza `articles.editorial_status`.
+> O estado `'approved'` existe no enum por compatibilidade histórica (migration legacy) e para
+> uso manual futuro (ex: editor marca diretamente na dashboard).
+> 
+> Na Fase 8, será adicionado `UPDATE articles SET editorial_status='approved'` dentro de
+> `approve_article()` para corrigir esta lacuna.
+> 
+> **Não filtre artigos por `editorial_status = 'approved'` esperando encontrar os aprovados
+> pelo dispatch — use `dispatches.status = 'article_approved'` para isso.**
 
 ---
 

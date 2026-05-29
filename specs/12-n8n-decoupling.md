@@ -103,6 +103,16 @@ if os.getenv("NEWS_RADAR_SCHEDULER", "").lower() in {"1", "true"}:
     scheduler.start()
 ```
 
+> ⚠️ **Aviso APScheduler multi-worker:**
+> `BackgroundScheduler` é compatível **apenas com execução single-process**. O `docker-compose.yml`
+> atual usa `python api_server.py` (Flask single-process), então não é problema imediato.
+>
+> Se no futuro for para gunicorn com múltiplos workers (`--workers N`), cada worker iniciaria
+> um scheduler independente, resultando em N coletas simultâneas. Nesse cenário:
+> - Usar `APScheduler` com job store persistente (PostgreSQL ou Redis), **ou**
+> - Inicializar o scheduler em processo separado (`python -m news_radar.scheduler`), **ou**
+> - Usar `--preload` do gunicorn com `--workers 1` para processos de scheduler.
+
 ### Etapa 1.3 — Dashboard de Scheduler (futuro)
 
 Página `1_Operacao.py` pode exibir:
@@ -143,9 +153,32 @@ Estes endpoints continuam existindo para que n8n possa chamar caso ainda seja us
 4. Monitorar: ambos não devem disparar ao mesmo tempo
 
 **Prevenção de duplo disparo:**
-- `create_dispatch()` verifica se já existe dispatch para a edição/data antes de criar
-- `collect_feeds()` é idempotente por canonical_url
-- Dispatcher com retry não causa duplicatas
+
+> ⚠️ **RISCO REAL — CORREÇÃO NECESSÁRIA ANTES DE ATIVAR O SCHEDULER:**
+>
+> `create_dispatch()` **NÃO verifica** se a edição já foi criada hoje. A verificação atual
+> (`SELECT article_id FROM dispatches WHERE edition_date = %s`) só exclui artigos já despachados
+> de `already`, mas não impede que uma segunda chamada crie um novo lote com os próximos candidatos.
+>
+> Se n8n e o scheduler Python dispararem simultaneamente às 06:30, o resultado serão 6 artigos
+> enviados ao Telegram para a edição da manhã.
+>
+> **Guard obrigatório a adicionar em `dispatch.py::create_dispatch()` antes da Fase 1:**
+>
+> ```python
+> # Adicionar ao início de create_dispatch(), antes de select_top_articles()
+> with connect() as conn:
+>     with conn.cursor() as cur:
+>         cur.execute(
+>             "SELECT COUNT(*) AS cnt FROM dispatches WHERE edition = %s AND edition_date = %s",
+>             (edition, date.today())
+>         )
+>         if cur.fetchone()["cnt"] > 0:
+>             return []  # edição já criada hoje — não duplicar
+> ```
+
+- `collect_feeds()` é idempotente por canonical_url (sem risco de duplicata)
+- O guard acima tornará `create_dispatch()` seguro para duplo disparo após implementado
 
 **Rollback:**
 - Para voltar ao n8n: desabilitar scheduler (`NEWS_RADAR_SCHEDULER=0`)

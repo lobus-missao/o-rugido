@@ -30,6 +30,7 @@ News Radar RSS é uma plataforma editorial de monitoramento de notícias com foc
 | Container | Docker Compose | `docker-compose.yml` |
 | HTTPS | Caddy | `Caddyfile` |
 | IA local | Ollama (opcional, não usado no fluxo principal) | `src/news_radar/ai_caller.py` |
+| Score Explainer | Decomposição do score automático com labels PT-BR | `src/news_radar/score_explainer.py` |
 
 ---
 
@@ -123,6 +124,9 @@ Responsável por:
 5. O CLI (`cli.py`) é usado pela API Flask. Cada comando deve continuar funcionando.
 6. Os 9 scores existentes (`auto_score_*`, `final_score_*`, `ai_score`) devem continuar.
 7. O `title_signature` e `canonical_url` são a chave de deduplicação. Não altere a lógica sem spec.
+8. O comando `cleanup` remove artigos velhos sem IA — preservar critérios exatos (published_at, card_status, ai_score).
+9. `score_explainer.py::explain_score()` está completo e pronto para integração. Não alterar a interface pública.
+10. `editorial_status = 'approved'` **não é escrito** pelo `dispatch.approve_article()`. Não dependa deste estado para queries de artigos aprovados — use `dispatches.status = 'article_approved'`.
 
 ---
 

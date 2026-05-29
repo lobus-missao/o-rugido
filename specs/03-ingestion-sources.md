@@ -1,7 +1,7 @@
 # Spec 03 — Fontes e Ingestão
 
 **Status:** Aprovado
-**Fase:** 3 (fontes gerenciáveis) / Funcional atual para RSS
+**Fase:** 2 (tabela `sources`) → 3 (UI de fontes no dashboard) / Funcional atual para RSS
 
 ---
 

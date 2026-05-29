@@ -1,3 +1,14 @@
+<!--
+  ATENÇÃO: Este template usa placeholders NÃO suportados pelo card_renderer.py atual:
+    - {{subtitulo_html}}  → não existe em _render_html()
+    - {{categoria_tag}}   → não existe em _render_html() (o atual usa {{conteudo_tag}})
+
+  Antes de usar este template em produção, atualizar card_renderer.py::_render_html()
+  adicionando suporte a subtitulo_html e categoria_tag.
+
+  O template card.html (em uso em produção) é o que o renderer suporta hoje.
+  Este é o template editorial futuro — Fase 7 do tasks.md.
+-->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>

@@ -201,6 +201,18 @@ cluster_articles (
 )
 ```
 
+### `articles` — Campos Futuros (a adicionar incrementalmente)
+
+```sql
+-- Suporte a rollback de importação IA (Fase 4+)
+editor_score_override NUMERIC,           -- override manual do editor
+editor_score_reason TEXT,
+editor_score_by TEXT,
+editor_score_at TIMESTAMPTZ,
+ai_import_version INTEGER DEFAULT 0,     -- contador de importações IA (para rollback)
+ai_import_previous_json JSONB,           -- backup do ai_json antes da última importação
+```
+
 ### `card_templates` — Templates Versionados (Fase 7)
 
 ```sql
@@ -235,9 +247,9 @@ score_weights (
 ## Regras do Modelo
 
 1. **Nunca remover colunas** da tabela `articles` sem migration de compatibilidade
-2. **`raw_json`** é imutável — dado bruto preservado mesmo após normalização
+2. **`raw_json`** é **sempre atualizado** para refletir o dado mais recente do feed — não remover esta coluna nem adicionar proteção que bloqueie seu UPDATE. O `collector.py` atualiza `raw_json` a cada coleta do mesmo artigo (`upsert_article()`, linha ~98).
 3. **`ai_json`** é JSONB livre — validar antes de importar, nunca confiar cegamente
-4. **`editorial_status`** é a fonte de verdade do estado do artigo
+4. **`editorial_status`** é a fonte de verdade do estado do artigo. **Atenção:** o estado `'approved'` não é escrito pelo fluxo de dispatch atual (`dispatch.approve_article()` atualiza `dispatches.status`, não `articles.editorial_status`). O estado `'approved'` existe no enum por compatibilidade histórica (migration) e para uso manual futuro. Ver spec/10 para detalhes.
 5. **`final_score_*`** é o score usado para ordenação — sempre atualizado em `rank`
 6. **`canonical_url`** é a chave de deduplicação primária
 7. **`title_signature`** é auxiliar — colisão possível, nunca sobrescreve via `canonical_url`
