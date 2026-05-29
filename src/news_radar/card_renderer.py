@@ -1,14 +1,43 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 from .config import CARDS_DIR, TEMPLATES_DIR, ensure_dirs
 from .repository import articles_pending_card, update_card_status
 
+logger = logging.getLogger(__name__)
 
-def _render_html(article: dict[str, Any], template: str) -> str:
+_PRIORITY_LABEL: dict[str, str] = {
+    "critica": "CRITICA",
+    "alta": "ALTA",
+    "media": "MEDIA",
+    "baixa": "BAIXA",
+    "ruido": "RUIDO",
+}
+_PRIORITY_COLOR: dict[str, str] = {
+    "critica": "#dc2626",
+    "alta": "#ea580c",
+    "media": "#d97706",
+    "baixa": "#16a34a",
+    "ruido": "#6b7280",
+}
+
+
+def build_card_context(
+    article: dict[str, Any],
+    scope: str | None = None,
+    title_override: str | None = None,
+    subtitle_override: str | None = None,
+) -> dict[str, str]:
+    """Build the full template variable dict from an article.
+
+    Supports all placeholders used by card.html and card-editorial-base.html.
+    Every value is a plain string — never None, never a raw '{{...}}' marker.
+    title_override / subtitle_override take priority over ai_json suggestions.
+    """
     ai_json = article.get("ai_json") or {}
     if isinstance(ai_json, str):
         try:
@@ -16,38 +45,68 @@ def _render_html(article: dict[str, Any], template: str) -> str:
         except Exception:
             ai_json = {}
 
-    # Prioridade
+    # ── Título ─────────────────────────────────────────────────────────────────
+    titulo = (
+        title_override
+        or ai_json.get("titulo_sugerido")
+        or article.get("title")
+        or ""
+    ).strip()
+
+    # ── Subtítulo (card-editorial-base.html) ───────────────────────────────────
+    subtitulo_raw = (subtitle_override or ai_json.get("subtitulo_sugerido") or "").strip()
+    subtitulo_html = (
+        f'<div class="card-subtitulo">{subtitulo_raw}</div>' if subtitulo_raw else ""
+    )
+
+    # ── Prioridade ─────────────────────────────────────────────────────────────
     priority = (article.get("priority") or "").lower()
-    priority_label = {
-        "critica": "CRITICA", "alta": "ALTA", "media": "MEDIA",
-        "baixa": "BAIXA", "ruido": "RUIDO",
-    }.get(priority, priority.upper() or "?")
-    priority_color = {
-        "critica": "#dc2626", "alta": "#ea580c", "media": "#d97706",
-        "baixa": "#16a34a", "ruido": "#6b7280",
-    }.get(priority, "#6b7280")
+    priority_label = _PRIORITY_LABEL.get(priority, priority.upper() or "?")
+    priority_color = _PRIORITY_COLOR.get(priority, "#6b7280")
 
-    # Pontos-chave
-    pontos_chave = ai_json.get("pontos_chave") or []
-    if isinstance(pontos_chave, str):
-        pontos_chave = [pontos_chave]
-    pontos_html = "".join(f"<li>{p}</li>" for p in pontos_chave[:4])
+    # ── Editoria / Categoria ───────────────────────────────────────────────────
+    category = article.get("category") or ai_json.get("editoria") or "-"
+    categoria_tag = (
+        f'<span class="tag tag-categoria">{category}</span>'
+        if category and category != "-"
+        else ""
+    )
 
-    # Resumo
+    # ── Pontos-chave ───────────────────────────────────────────────────────────
+    pontos_chave_raw = ai_json.get("pontos_chave") or []
+    if isinstance(pontos_chave_raw, str):
+        pontos_chave_raw = [pontos_chave_raw]
+    pontos_li = "".join(f"<li>{p}</li>" for p in pontos_chave_raw[:4])
+    # card.html uses {{pontos_chave}} inside an existing <ul>
+    # card-editorial-base.html uses {{pontos_html}} as a standalone block
+    pontos_html_block = (
+        f'<div class="card-pontos"><ul>{pontos_li}</ul></div>' if pontos_li else ""
+    )
+
+    # ── Resumo ─────────────────────────────────────────────────────────────────
     resumo = (ai_json.get("resumo_curto") or article.get("summary") or "")[:200]
 
-    # Score
-    score = float(article.get("final_score_brasil") or article.get("final_score_piaui") or
-                  article.get("final_score_teresina") or 0)
+    # ── Score ──────────────────────────────────────────────────────────────────
+    if scope and scope in ("brasil", "piaui", "teresina"):
+        score = float(article.get(f"final_score_{scope}") or 0)
+    else:
+        score = float(
+            article.get("final_score_brasil")
+            or article.get("final_score_piaui")
+            or article.get("final_score_teresina")
+            or 0
+        )
 
-    # Badge IA ou Auto
+    # ── IA badge ───────────────────────────────────────────────────────────────
     ia_badge = "IA" if article.get("ai_score") else "AUTO"
 
-    # Localidade
+    # ── Localidade ─────────────────────────────────────────────────────────────
     localidade = ai_json.get("localidade") or article.get("locality") or ""
-    localidade_tag = f'<span class="tag local">{localidade}</span>' if localidade else ""
+    localidade_tag = (
+        f'<span class="tag local">{localidade}</span>' if localidade else ""
+    )
 
-    # Entidades (máx 3)
+    # ── Entidades (máx 3) ──────────────────────────────────────────────────────
     entidades = ai_json.get("entidades") or []
     if isinstance(entidades, str):
         try:
@@ -55,11 +114,10 @@ def _render_html(article: dict[str, Any], template: str) -> str:
         except Exception:
             entidades = [entidades]
     entidades_tags = "".join(
-        f'<span class="tag entidade">{e}</span>'
-        for e in entidades[:3]
+        f'<span class="tag entidade">{e}</span>' for e in entidades[:3]
     )
 
-    # Riqueza de conteúdo
+    # ── Riqueza de conteúdo (card.html legacy) ─────────────────────────────────
     summary_len = len(article.get("summary") or "")
     if summary_len >= 500:
         conteudo_tag = f'<span class="tag conteudo-rico">Conteudo rico ({summary_len} chars)</span>'
@@ -70,48 +128,152 @@ def _render_html(article: dict[str, Any], template: str) -> str:
     else:
         conteudo_tag = '<span class="tag conteudo-simples">Sem resumo</span>'
 
-    # Justificativa
+    # ── Justificativa do score ─────────────────────────────────────────────────
     justif = ai_json.get("justificativa_score") or ""
-    justificativa_html = f'<div class="justificativa">{justif[:140]}</div>' if justif else ""
-
-    return (
-        template
-        .replace("{{titulo}}", article.get("title") or "")
-        .replace("{{editoria}}", article.get("category") or "-")
-        .replace("{{prioridade}}", priority_label)
-        .replace("{{prioridade_cor}}", priority_color)
-        .replace("{{resumo}}", resumo)
-        .replace("{{pontos_chave}}", pontos_html)
-        .replace("{{fonte}}", article.get("source") or "")
-        .replace("{{data}}", str(article.get("published_at") or "")[:10])
-        .replace("{{score}}", f"{score:.0f}")
-        .replace("{{ia_badge}}", ia_badge)
-        .replace("{{localidade_tag}}", localidade_tag)
-        .replace("{{entidades_tags}}", entidades_tags)
-        .replace("{{conteudo_tag}}", conteudo_tag)
-        .replace("{{justificativa_html}}", justificativa_html)
+    justificativa_html = (
+        f'<div class="justificativa">{justif[:140]}</div>' if justif else ""
     )
+
+    return {
+        "titulo": titulo,
+        "subtitulo_html": subtitulo_html,
+        "editoria": category,
+        "prioridade": priority_label,
+        "prioridade_cor": priority_color,
+        "resumo": resumo,
+        # card.html: wraps items inside its own <ul>
+        "pontos_chave": pontos_li,
+        # card-editorial-base.html: standalone block with <div><ul>
+        "pontos_html": pontos_html_block,
+        "fonte": article.get("source") or "",
+        "data": str(article.get("published_at") or "")[:10],
+        "score": f"{score:.0f}",
+        "ia_badge": ia_badge,
+        "localidade_tag": localidade_tag,
+        "entidades_tags": entidades_tags,
+        "categoria_tag": categoria_tag,
+        "conteudo_tag": conteudo_tag,
+        "justificativa_html": justificativa_html,
+        "url": article.get("url") or article.get("canonical_url") or "",
+    }
+
+
+def _render_html(
+    article: dict[str, Any],
+    template: str,
+    scope: str | None = None,
+    title_override: str | None = None,
+    subtitle_override: str | None = None,
+) -> str:
+    """Substitute all {{placeholders}} in template using article data."""
+    ctx = build_card_context(
+        article,
+        scope=scope,
+        title_override=title_override,
+        subtitle_override=subtitle_override,
+    )
+    result = template
+    for key, value in ctx.items():
+        result = result.replace("{{" + key + "}}", value)
+    return result
+
+
+def render_card_html(
+    article: dict[str, Any],
+    template_name: str = "card.html",
+    scope: str | None = None,
+    title_override: str | None = None,
+    subtitle_override: str | None = None,
+) -> str:
+    """Render card to an HTML string without requiring Playwright.
+
+    Raises ValueError if required fields (title, source) are missing.
+    Raises FileNotFoundError if the template does not exist.
+    """
+    ensure_dirs()
+    if not article.get("title"):
+        raise ValueError("Artigo deve ter titulo para gerar card")
+    if not article.get("source"):
+        raise ValueError("Artigo deve ter fonte para gerar card")
+
+    template_path = TEMPLATES_DIR / template_name
+    if not template_path.exists():
+        raise FileNotFoundError(f"Template nao encontrado: {template_path}")
+
+    template = template_path.read_text(encoding="utf-8")
+    return _render_html(
+        article,
+        template,
+        scope=scope,
+        title_override=title_override,
+        subtitle_override=subtitle_override,
+    )
+
+
+def save_card_html(article_id: str, html: str) -> Path:
+    """Persist the rendered HTML to data/cards/ for audit trail.
+
+    Returns the path where the file was saved.
+    """
+    ensure_dirs()
+    html_path = CARDS_DIR / f"card_{article_id[:16]}.html"
+    html_path.write_text(html, encoding="utf-8")
+    return html_path
+
+
+def is_playwright_available() -> bool:
+    """Return True if Playwright + Chromium can launch successfully."""
+    try:
+        from playwright.sync_api import sync_playwright  # noqa: PLC0415
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            browser.close()
+        return True
+    except Exception:
+        return False
+
+
+def list_templates() -> list[str]:
+    """List card templates (card*.html) available in the templates/ directory."""
+    if not TEMPLATES_DIR.exists():
+        return ["card.html"]
+    names = sorted(p.name for p in TEMPLATES_DIR.glob("card*.html"))
+    return names if names else ["card.html"]
 
 
 def render_cards(
     scope: str = "brasil",
     limit: int = 5,
     article_ids: list[str] | None = None,
+    template_name: str = "card.html",
 ) -> list[dict[str, Any]]:
+    """Render cards for a list of articles or the pending queue.
+
+    For each valid article:
+    1. Renders HTML and saves it to data/cards/ (audit trail).
+    2. Attempts Playwright PNG generation.
+    3. If Playwright is unavailable, returns HTML-only results and logs a warning.
+
+    Returns a list of dicts with keys: article_id, title, card_path, html_path.
+    card_path is None when Playwright is unavailable.
+    """
     ensure_dirs()
-    template_path = TEMPLATES_DIR / "card.html"
+    template_path = TEMPLATES_DIR / template_name
     if not template_path.exists():
         raise FileNotFoundError(f"Template nao encontrado: {template_path}")
 
     template = template_path.read_text(encoding="utf-8")
 
     if article_ids:
-        # Renderiza artigos específicos (fluxo de dispatch)
-        from .db import connect
+        from .db import connect  # noqa: PLC0415
+
         with connect() as conn:
             with conn.cursor() as cur:
                 ph = ",".join(["%s"] * len(article_ids))
-                cur.execute(f"SELECT * FROM articles WHERE id IN ({ph})", article_ids)
+                cur.execute(
+                    f"SELECT * FROM articles WHERE id IN ({ph})", article_ids
+                )
                 articles = [dict(r) for r in cur.fetchall()]
     else:
         articles = articles_pending_card(scope=scope, limit=limit)
@@ -119,27 +281,68 @@ def render_cards(
     if not articles:
         return []
 
-    from playwright.sync_api import sync_playwright
+    valid_articles = [a for a in articles if a.get("title") and a.get("source")]
+    if not valid_articles:
+        logger.warning("Nenhum artigo valido para gerar card (sem titulo ou fonte)")
+        return []
 
-    generated = []
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 600, "height": 400})
+    # Render and save HTML for all valid articles before attempting Playwright
+    rendered: list[tuple[dict, str, Path]] = []
+    for article in valid_articles:
+        html = _render_html(article, template, scope=scope)
+        html_path = save_card_html(article["id"], html)
+        rendered.append((article, html, html_path))
 
-        for article in articles:
-            html = _render_html(article, template)
-            card_path = CARDS_DIR / f"card_{article['id'][:16]}.png"
+    generated: list[dict[str, Any]] = []
 
-            page.set_content(html, wait_until="networkidle")
-            page.locator("#card").screenshot(path=str(card_path))
+    try:
+        from playwright.sync_api import sync_playwright  # noqa: PLC0415
 
-            update_card_status(article["id"], status="pending", card_path=str(card_path))
-            generated.append({
-                "article_id": article["id"],
-                "title": article.get("title"),
-                "card_path": str(card_path),
-            })
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page(viewport={"width": 600, "height": 400})
 
-        browser.close()
+            for article, html, html_path in rendered:
+                card_path = CARDS_DIR / f"card_{article['id'][:16]}.png"
+                page.set_content(html, wait_until="networkidle")
+                page.locator("#card").screenshot(path=str(card_path))
+
+                update_card_status(
+                    article["id"],
+                    status="pending",
+                    card_path=str(card_path),
+                    html_path=str(html_path),
+                )
+                generated.append(
+                    {
+                        "article_id": article["id"],
+                        "title": article.get("title"),
+                        "card_path": str(card_path),
+                        "html_path": str(html_path),
+                    }
+                )
+
+            browser.close()
+
+    except Exception as exc:
+        logger.warning(
+            "Playwright indisponivel — gerado apenas HTML: %s", exc
+        )
+        for article, html, html_path in rendered:
+            update_card_status(
+                article["id"],
+                status="pending",
+                card_path=None,
+                html_path=str(html_path),
+            )
+            generated.append(
+                {
+                    "article_id": article["id"],
+                    "title": article.get("title"),
+                    "card_path": None,
+                    "html_path": str(html_path),
+                    "playwright_error": str(exc)[:200],
+                }
+            )
 
     return generated

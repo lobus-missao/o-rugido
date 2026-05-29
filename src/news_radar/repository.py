@@ -95,7 +95,12 @@ def articles_pending_card(scope: Scope = "brasil", limit: int = 5) -> list[dict]
             return [dict(row) for row in cur.fetchall()]
 
 
-def update_card_status(article_id: str, status: str, card_path: str | None = None) -> None:
+def update_card_status(
+    article_id: str,
+    status: str,
+    card_path: str | None = None,
+    html_path: str | None = None,
+) -> None:
     from .db import utc_now
     with connect() as conn:
         with conn.cursor() as cur:
@@ -104,10 +109,11 @@ def update_card_status(article_id: str, status: str, card_path: str | None = Non
                 UPDATE articles
                 SET card_status = %s,
                     card_path = COALESCE(%s, card_path),
+                    card_html_path = COALESCE(%s, card_html_path),
                     updated_at = %s
                 WHERE id = %s
                 """,
-                (status, card_path, utc_now(), article_id),
+                (status, card_path, html_path, utc_now(), article_id),
             )
 
 

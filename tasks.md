@@ -304,36 +304,55 @@ tests/test_phase6_ranking.py     (novo — 34 testes)
 
 ---
 
-## Fase 7 — Geração de Cards via HTML/PNG
+## Fase 7 — Geração de Cards via HTML/PNG ✅ Concluída
 
 **Objetivo:** Preview de card no dashboard, templates versionados, melhor experiência.
 
+**Concluída em:** 2026-05-29
+
 ### Tarefas
-- [ ] Preview de card antes de aprovar (`st.image()` do PNG)
-- [ ] Verificação de instalação do Playwright na dashboard
-- [ ] Suporte a múltiplos templates (`card_templates` tabela)
-- [ ] Migrar `_render_html()` para Jinja2
-- [ ] `card-editorial-base.html` como alternativa ao `card.html` atual
-- [ ] Geração de card direto da mesa editorial
+- [x] `build_card_context()` — extrai todos os dados do artigo (título, subtítulo, score, tags, etc.)
+- [x] `render_card_html()` — renderiza HTML sem Playwright (novo)
+- [x] `save_card_html()` — salva HTML em `data/cards/` para auditoria (novo)
+- [x] `is_playwright_available()` — verifica se Playwright está instalado (novo)
+- [x] `list_templates()` — lista templates disponíveis (novo)
+- [x] `render_cards()` — atualizado: salva HTML antes de PNG, fallback se Playwright ausente
+- [x] `_render_html()` — atualizado: suporta novos placeholders `subtitulo_html`, `categoria_tag`, `pontos_html`
+- [x] `card-editorial-base.html` totalmente suportado pelo renderer (novos placeholders adicionados)
+- [x] Migration `card_html_path TEXT` em `articles` (db.py MIGRATION_SQL)
+- [x] `update_card_status()` aceita `html_path` opcional (repository.py)
+- [x] Dashboard `5_Editorial.py`: view "Gerar Card" com seleção de artigo/cluster, edição título/subtítulo, preview HTML, geração PNG
+- [x] `record_editorial_action(action="card_generated")` registrado na ação de geração
+- [x] `tests/test_phase7_cards.py` — 47 testes (build_card_context, render, save, list_templates, validação)
+- [x] Preview HTML via `st.components.v1.html()` na dashboard
+- [x] Dashboard não quebra se Playwright ausente (fallback HTML com aviso)
+- [ ] PNG com Playwright (pendente: verificar instalação no Docker — ver Fase 8)
 
-### Riscos
-- Migração para Jinja2 não deve quebrar cards existentes (manter compatibilidade de placeholders)
-- Playwright pode falhar em alguns ambientes
+### Notas de escopo (decisões)
+- Jinja2: não migrado — substituição `str.replace()` permanece (compatível, sem dependência nova)
+- `card_templates` DB table: não implementada — templates listados do filesystem (`list_templates()`)
+- Playwright: integrado no fluxo com fallback HTML. Docker pode exigir `playwright install-deps` adicional.
 
-### Arquivos Prováveis
+### Arquivos Criados/Modificados
 ```
-src/news_radar/card_renderer.py  (Jinja2, multi-template)
-templates/card.html              (manter como está)
-templates/card-editorial-base.html (novo)
-src/news_radar/db.py             (tabela card_templates)
-pages/5_Editorial.py             (gerar card direto)
+src/news_radar/card_renderer.py   (reescrito — 7 funções novas/atualizadas)
+src/news_radar/db.py              (migration card_html_path)
+src/news_radar/repository.py      (update_card_status: html_path opcional)
+pages/5_Editorial.py              (view "Gerar Card" adicionada)
+tests/test_phase7_cards.py        (novo — 47 testes)
 ```
 
 ### Critérios de Aceite
-- [ ] Preview de card visível antes de aprovar
-- [ ] Múltiplos templates disponíveis
-- [ ] Playwright ausente não crash dashboard
-- [ ] Jinja2 compatível com placeholders existentes
+- [x] Editor consegue selecionar artigo ou cluster
+- [x] Sistema sugere título/subtítulo usando ai_json quando existir
+- [x] Sistema permite preview do card (HTML via components.v1.html)
+- [x] Nenhum placeholder cru aparece no HTML final (testado em 47 casos)
+- [x] Card HTML é salvo em data/cards/
+- [x] PNG é gerado se Playwright estiver disponível
+- [x] Ação editorial é registrada (card_generated)
+- [x] Dashboard não quebra sem Playwright (aviso + HTML-only mode)
+- [x] 219 testes passando, 2 skipped
+- [x] tasks.md atualizado
 
 ---
 
