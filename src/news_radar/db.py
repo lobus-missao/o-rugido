@@ -187,12 +187,15 @@ SCHEMA_SQL = [
 ]
 
 
-MIGRATION_SQL = [
-    """
+# Migrations versionadas — cada entrada tem chave única.
+# init_db() aplica apenas as entradas ainda não registradas em schema_migrations.
+# Nunca remover entradas existentes — apenas adicionar novas.
+MIGRATION_SQL: dict[str, str] = {
+    "v1_editorial_status_column": """
     ALTER TABLE articles
     ADD COLUMN IF NOT EXISTS editorial_status TEXT NOT NULL DEFAULT 'discovered'
     """,
-    """
+    "v1_editorial_status_backfill": """
     UPDATE articles SET editorial_status =
         CASE
             WHEN card_status = 'approved' THEN 'approved'
@@ -205,18 +208,34 @@ MIGRATION_SQL = [
         END
     WHERE editorial_status IS NULL OR editorial_status = 'discovered'
     """,
-    "CREATE INDEX IF NOT EXISTS idx_articles_editorial_status ON articles(editorial_status)",
-    "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS article_reviewed_by TEXT",
-    "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS article_reviewed_at TIMESTAMPTZ",
-    "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS card_reviewed_by TEXT",
-    "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS card_reviewed_at TIMESTAMPTZ",
-    "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ",
-    # Fase 7 — caminho do HTML gerado (auditoria do card)
-    "ALTER TABLE articles ADD COLUMN IF NOT EXISTS card_html_path TEXT",
-    # Fase 8 — nota do revisor ao aprovar/rejeitar
-    "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS review_notes TEXT",
-]
-
+    "v1_editorial_status_index": (
+        "CREATE INDEX IF NOT EXISTS idx_articles_editorial_status"
+        " ON articles(editorial_status)"
+    ),
+    "v1_dispatches_reviewed_by": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS article_reviewed_by TEXT"
+    ),
+    "v1_dispatches_reviewed_at": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS article_reviewed_at TIMESTAMPTZ"
+    ),
+    "v1_dispatches_card_reviewed_by": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS card_reviewed_by TEXT"
+    ),
+    "v1_dispatches_card_reviewed_at": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS card_reviewed_at TIMESTAMPTZ"
+    ),
+    "v1_dispatches_ready_at": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ"
+    ),
+    # Fase 7
+    "v7_articles_card_html_path": (
+        "ALTER TABLE articles ADD COLUMN IF NOT EXISTS card_html_path TEXT"
+    ),
+    # Fase 8
+    "v8_dispatches_review_notes": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS review_notes TEXT"
+    ),
+}
 
 DATE_COLUMN_MIGRATIONS = {
     "articles": ["published_at", "created_at", "updated_at"],
@@ -248,21 +267,50 @@ def init_db() -> None:
         with conn.cursor() as cur:
             for statement in SCHEMA_SQL:
                 cur.execute(statement)
-            for statement in MIGRATION_SQL:
-                cur.execute(statement)
+
+            # Tabela de controle de versão de migrations (Fase 9)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    id TEXT PRIMARY KEY,
+                    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+
+            # Aplica apenas migrations ainda não registradas
+            cur.execute("SELECT id FROM schema_migrations")
+            applied = {row["id"] for row in cur.fetchall()}
+            for migration_id, stmt in MIGRATION_SQL.items():
+                if migration_id not in applied:
+                    cur.execute(stmt)
+                    cur.execute(
+                        "INSERT INTO schema_migrations (id, applied_at) VALUES (%s, NOW())",
+                        (migration_id,),
+                    )
+
             _ensure_datetime_columns(cur)
 
 
 def _ensure_datetime_columns(cur) -> None:
+    """Converte colunas de data para TIMESTAMPTZ apenas se ainda não forem TIMESTAMPTZ."""
     for table, columns in DATE_COLUMN_MIGRATIONS.items():
         for column in columns:
+            # Verifica o tipo atual antes de alterar (evita ALTER desnecessário)
             cur.execute(
                 """
-                ALTER TABLE %s
-                ALTER COLUMN %s TYPE TIMESTAMPTZ
-                USING NULLIF(%s::text, '')::timestamptz
-                """ % (table, column, column)
+                SELECT data_type FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name   = %s
+                  AND column_name  = %s
+                """,
+                (table, column),
             )
+            row = cur.fetchone()
+            if row and row["data_type"] != "timestamp with time zone":
+                cur.execute(
+                    "ALTER TABLE %s ALTER COLUMN %s TYPE TIMESTAMPTZ"
+                    " USING NULLIF(%s::text, '')::timestamptz"
+                    % (table, column, column)
+                )
 
 
 def json_dumps(value) -> str | None:

@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import json
 import re
+import time
+import functools
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -17,6 +19,35 @@ from .ranker import (
     SOCIAL_IMPACT_TERMS, POLITICAL_TERMS, BRAZIL_TERMS,
     PIAUI_TERMS, TERESINA_TERMS, recency_score, extract_money_values,
 )
+
+# Cache TTL leve — funciona mesmo fora do contexto Streamlit.
+# Funções marcadas com @_ttl_cache(seconds=N) reutilizam resultado por N segundos.
+# Streamlit reseta o estado entre sessões, então este cache é por processo Python.
+def _ttl_cache(seconds: int = 60):
+    def decorator(func):
+        _store: dict = {}
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            key = (args, tuple(sorted(kwargs.items())))
+            now = time.monotonic()
+            if key in _store:
+                ts, result = _store[key]
+                if now - ts < seconds:
+                    return result
+            result = func(*args, **kwargs)
+            _store[key] = (now, result)
+            # Evita crescimento ilimitado: descarta entradas expiradas quando > 50
+            if len(_store) > 50:
+                cutoff = now - seconds
+                stale = [k for k, (ts, _) in _store.items() if ts < cutoff]
+                for k in stale:
+                    _store.pop(k, None)
+            return result
+
+        wrapper.cache_clear = lambda: _store.clear()
+        return wrapper
+    return decorator
 
 SCORE_COLUMN = {
     "brasil": "final_score_brasil",
@@ -232,6 +263,7 @@ def _build_cluster(arts: list[dict], cluster_type: str) -> dict:
 
 # ── Entidades ─────────────────────────────────────────────────────────────────
 
+@_ttl_cache(seconds=120)
 def top_entities(hours: int = 24, limit: int = 30) -> list[dict]:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     with connect() as conn:
@@ -291,6 +323,7 @@ def top_entities(hours: int = 24, limit: int = 30) -> list[dict]:
 
 # ── Alertas ───────────────────────────────────────────────────────────────────
 
+@_ttl_cache(seconds=60)
 def compute_alerts() -> list[dict]:
     alerts = []
     now = datetime.now(timezone.utc)
@@ -425,6 +458,7 @@ def compute_alerts() -> list[dict]:
 
 # ── Cobertura de IA ───────────────────────────────────────────────────────────
 
+@_ttl_cache(seconds=120)
 def ai_coverage_stats() -> dict:
     with connect() as conn:
         with conn.cursor() as cur:
@@ -474,6 +508,7 @@ def ai_coverage_stats() -> dict:
 
 # ── Saúde das fontes ──────────────────────────────────────────────────────────
 
+@_ttl_cache(seconds=120)
 def source_health() -> list[dict]:
     with connect() as conn:
         with conn.cursor() as cur:
@@ -554,6 +589,7 @@ def source_health() -> list[dict]:
 
 # ── Operação / Pipeline ───────────────────────────────────────────────────────
 
+@_ttl_cache(seconds=60)
 def pipeline_health() -> dict:
     now = datetime.now(timezone.utc)
     cutoffs = {

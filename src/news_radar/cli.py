@@ -235,6 +235,40 @@ def cmd_cleanup(args) -> None:
     }, ensure_ascii=False, indent=2))
 
 
+def cmd_backup(args) -> None:
+    """Exporta o banco via pg_dump para um arquivo .sql."""
+    import subprocess
+    import shutil
+    from .config import DATABASE_URL
+
+    output = args.output or f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+    pg_dump = shutil.which("pg_dump")
+    if not pg_dump:
+        print(json.dumps({
+            "ok": False,
+            "error": "pg_dump não encontrado. Instale postgresql-client ou use Docker.",
+            "manual": f"docker exec <container_postgres> pg_dump -U <user> news_radar > {output}",
+        }, ensure_ascii=False))
+        return
+
+    result = subprocess.run(
+        [pg_dump, DATABASE_URL, "--no-password"],
+        capture_output=True, text=True, encoding="utf-8",
+    )
+    if result.returncode == 0:
+        Path(output).write_text(result.stdout, encoding="utf-8")
+        print(json.dumps({
+            "ok": True,
+            "file": str(Path(output).resolve()),
+            "size_bytes": Path(output).stat().st_size,
+        }, ensure_ascii=False))
+    else:
+        print(json.dumps({
+            "ok": False,
+            "error": result.stderr.strip()[:300] or "pg_dump falhou sem mensagem",
+        }, ensure_ascii=False))
+
+
 def _json_default(obj):
     if isinstance(obj, datetime):
         return obj.isoformat()
@@ -344,6 +378,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--min-size", type=int, default=2, help="Mínimo de artigos por cluster (default: 2)")
     p.add_argument("--scope", choices=["brasil", "piaui", "teresina", "todos"], default="todos")
     p.set_defaults(func=cmd_cluster_articles)
+
+    p = sub.add_parser("backup", help="Exporta banco para arquivo .sql via pg_dump.")
+    p.add_argument("--output", help="Arquivo de saída (default: backup_YYYYMMDD_HHMMSS.sql)")
+    p.set_defaults(func=cmd_backup)
 
     return parser
 

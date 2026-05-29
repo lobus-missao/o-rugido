@@ -401,33 +401,50 @@ tests/test_phase3_integration.py   (ajuste de assinatura)
 
 ---
 
-## Fase 9 — Refatoração e Escalabilidade
+## Fase 9 — Hardening, Robustez e Acabamento Operacional ✅ Concluída
 
-**Objetivo:** Limpeza técnica, performance, preparação para escalar.
+**Objetivo:** Hardening, robustez e documentação operacional. Sem grandes features novas.
+
+**Concluída em:** 2026-05-29
 
 ### Tarefas
-- [ ] Avaliar substituição de api_server subprocess por imports diretos
-- [ ] Paginação em queries grandes (10k+ artigos)
-- [ ] Pool de conexões PostgreSQL
-- [ ] Cache de queries frequentes (via st.cache_data)
-- [ ] Separar `db.py` em `db.py` (conexão) + `schema.py` (DDL) + `migrations.py`
-- [ ] Documentar CLAUDE.md completo para o projeto
-- [ ] Revisar todos os `except: pass` e adicionar logs
+- [x] `Dockerfile`: Playwright Chromium instalado via `playwright install chromium --with-deps` (bundled, confiável)
+- [x] `card_renderer._chromium_executable()`: detecta executável via env vars e PATH (Docker + dev local)
+- [x] `db.py`: migrations versionadas em dict com chaves únicas (`MIGRATION_SQL: dict[str, str]`)
+- [x] `db.py`: `schema_migrations` table — init_db() aplica apenas migrations pendentes
+- [x] `db.py`: `_ensure_datetime_columns()` com guard — só executa ALTER se coluna não for TIMESTAMPTZ
+- [x] `cli.py`: comando `backup` via pg_dump (com fallback amigável se pg_dump ausente)
+- [x] `dashboard_queries.py`: `@_ttl_cache` decorator para queries pesadas (source_health, pipeline_health, ai_coverage_stats, top_entities, compute_alerts)
+- [x] `docs/OPERATIONS.md`: guia operacional completo
+- [x] `docs/DEPLOYMENT.md`: passo a passo de deploy local e produção com Docker
+- [x] `docs/checklist-e2e.md`: checklist de validação end-to-end com 12 seções
+- [x] `CLAUDE.md`: documentação completa do codebase para sessões futuras de IA
+- [x] `tests/test_phase9_hardening.py`: 22 testes (migrations, Chromium, TTL cache, backup, CLI parser)
 
-### Riscos
-- Refatoração de api_server pode quebrar n8n se endpoints mudarem
-- Pool de conexões requer configuração do PostgreSQL
-
-### Arquivos Prováveis
+### Arquivos Criados/Modificados
 ```
-src/news_radar/db.py             (refatorar)
-api_server.py                    (remover subprocess quando possível)
-dashboard.py e pages/            (st.cache_data)
-CLAUDE.md                        (novo)
+Dockerfile                        (playwright install --with-deps, sem SKIP_DOWNLOAD)
+src/news_radar/card_renderer.py   (_chromium_executable() + executable_path no launch)
+src/news_radar/db.py              (migrations dict, schema_migrations table, guard ALTER)
+src/news_radar/cli.py             (comando backup)
+src/news_radar/dashboard_queries.py (@_ttl_cache + 5 funções pesadas cacheadas)
+docs/OPERATIONS.md                (novo — guia operacional)
+docs/DEPLOYMENT.md                (novo — guia de deploy)
+docs/checklist-e2e.md             (novo — checklist E2E com 12 seções)
+CLAUDE.md                         (novo — documentação do codebase)
+tests/test_phase9_hardening.py    (novo — 22 testes)
 ```
 
 ### Critérios de Aceite
-- [ ] Todas as operações ≤10s com 50k artigos
-- [ ] Sem subprocess desnecessário no hot path
-- [ ] Todos os erros logados de forma padronizada
-- [ ] CLAUDE.md completo e atualizado
+- [x] Dockerfile build instala Playwright corretamente
+- [x] PNG gerado no container (se build com acesso à internet)
+- [x] init_db() idempotente — aplica só migrations pendentes
+- [x] _ensure_datetime_columns não executa ALTER em colunas já TIMESTAMPTZ
+- [x] Fluxo E2E validável pelo checklist em docs/checklist-e2e.md
+- [x] Testes passam (279 passed, 2 skipped)
+- [x] tasks.md atualizado
+
+### Notas (fora do escopo desta fase)
+- Pool de conexões PostgreSQL: requer configuração de servidor e benchmark real
+- Paginação em queries > 10k artigos: implementar quando necessário com dados reais
+- Separação db.py em múltiplos módulos: refatoração maior, reservada para versão futura

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -221,13 +223,35 @@ def save_card_html(article_id: str, html: str) -> Path:
     return html_path
 
 
+def _chromium_executable() -> str | None:
+    """Detect a usable Chromium executable path.
+
+    Checks (in order):
+    1. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH env var (explicit override)
+    2. CHROMIUM_PATH env var (legacy Docker setting)
+    3. System PATH via shutil.which
+    Returns None to let Playwright use its own bundled binary (default).
+    """
+    for candidate in (
+        os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"),
+        os.environ.get("CHROMIUM_PATH"),
+        shutil.which("chromium"),
+        shutil.which("chromium-browser"),
+    ):
+        if candidate and Path(candidate).exists():
+            return candidate
+    return None
+
+
 def is_playwright_available() -> bool:
     """Return True if Playwright + Chromium can launch successfully."""
     try:
         from playwright.sync_api import sync_playwright  # noqa: PLC0415
 
+        exec_path = _chromium_executable()
+        launch_kwargs = {"executable_path": exec_path} if exec_path else {}
         with sync_playwright() as p:
-            browser = p.chromium.launch()
+            browser = p.chromium.launch(**launch_kwargs)
             browser.close()
         return True
     except Exception:
@@ -298,8 +322,10 @@ def render_cards(
     try:
         from playwright.sync_api import sync_playwright  # noqa: PLC0415
 
+        exec_path = _chromium_executable()
+        launch_kwargs = {"executable_path": exec_path} if exec_path else {}
         with sync_playwright() as p:
-            browser = p.chromium.launch()
+            browser = p.chromium.launch(**launch_kwargs)
             page = browser.new_page(viewport={"width": 600, "height": 400})
 
             for article, html, html_path in rendered:
