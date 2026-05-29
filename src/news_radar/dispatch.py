@@ -5,12 +5,15 @@ Gerencia o fluxo: selecionar top 3 → aprovar artigo → gerar card → aprovar
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import requests
+
+_logger = logging.getLogger(__name__)
 
 from .config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 from .db import connect, utc_now
@@ -129,16 +132,44 @@ def create_dispatch(
     """
     Cria registros de dispatch para a edição e envia pro Telegram.
     Retorna os dispatches criados.
+
+    Idempotente: chamadas repetidas para a mesma edição/data/scope com dispatches
+    ativos retornam [] sem duplicar envios ao Telegram.
     """
+    if edition not in EDITIONS:
+        raise ValueError(f"edition deve ser uma destas: {list(EDITIONS.keys())}")
+
+    today = date.today()
+
+    # Guard de idempotência: impede duplo envio ao Telegram se n8n e scheduler
+    # interno dispararem simultaneamente. Verifica dispatches ativos (não rejeitados).
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*) AS cnt FROM dispatches
+                WHERE edition = %s
+                  AND edition_date = %s
+                  AND scope = %s
+                  AND status NOT IN ('article_rejected', 'card_rejected')
+                """,
+                (edition, today, scope),
+            )
+            if cur.fetchone()["cnt"] > 0:
+                _logger.warning(
+                    "Dispatch bloqueado (idempotência): edição '%s' já existe para %s"
+                    " scope=%s. Chamada duplicada ignorada.",
+                    edition,
+                    today,
+                    scope,
+                )
+                return []
+
     articles = select_top_articles(edition, scope, top)
     if not articles:
         return []
 
-    if edition not in EDITIONS:
-        raise ValueError(f"edition deve ser uma destas: {list(EDITIONS.keys())}")
-
     edition_info = EDITIONS[edition]
-    today = date.today()
     created = []
 
     with connect() as conn:

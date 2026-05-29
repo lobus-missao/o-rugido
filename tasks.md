@@ -34,6 +34,11 @@
 **Objetivo:** Sistema funcionar sem n8n obrigatório, usando scheduler interno Python.
 
 ### Tarefas
+- [x] Guard de idempotência em `create_dispatch()` implementado (Fase 1 — pré-requisito do scheduler)
+  - SQL: `COUNT(*) WHERE edition/edition_date/scope/status NOT IN (rejeitados)`
+  - Retorna `[]` se edição ativa já existe; loga warning claro
+  - Testes: `tests/test_dispatch_idempotency.py` (7 casos)
+  - Docs: `docs/manual-validation-phase-1.md`
 - [ ] Adicionar `APScheduler` ao `requirements.txt`
 - [ ] Criar `src/news_radar/scheduler.py` com jobs de coleta e dispatch
 - [ ] Integrar scheduler ao `api_server.py` (ativação via `NEWS_RADAR_SCHEDULER=1`)
@@ -43,8 +48,9 @@
 - [ ] Documentar: `docs/N8N_WORKFLOWS.md` atualizado com nota sobre scheduler interno
 
 ### Riscos
-- Duplo disparo se n8n e scheduler ativos simultâneo → `create_dispatch()` já é idempotente
-- `collect_feeds()` já é idempotente por canonical_url
+- Duplo disparo se n8n e scheduler ativos simultâneo → **RESOLVIDO**: guard de idempotência
+  implementado em `create_dispatch()`. Ativar scheduler interno só após este guard estar ativo.
+- `collect_feeds()` já é idempotente por canonical_url (sem risco)
 
 ### Arquivos Prováveis
 ```
@@ -99,6 +105,10 @@ scripts/migrate_sources.py      (novo — one-shot para importar feeds.yaml)
 ## Fase 3 — Dashboard como Cockpit Editorial
 
 **Objetivo:** Editor opera ciclo completo sem terminal ou n8n.
+
+> **Dependência:** `8_Fontes_RSS.py` com dados reais de fontes requer Fase 2 (tabela `sources`)
+> completa. As demais tarefas desta fase podem ser iniciadas antes da Fase 2 e usar fallback
+> para `feeds.yaml` enquanto a tabela `sources` não existir.
 
 ### Tarefas
 - [ ] `8_Fontes_RSS.py`: listar fontes com status, habilitar/desabilitar
