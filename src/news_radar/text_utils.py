@@ -118,7 +118,22 @@ def count_terms(text: str, terms: list[str]) -> int:
 
 
 def extract_money_values(text: str) -> list[str]:
+    """Extrai valores monetários em reais do texto.
+
+    Cobre variantes com e sem acento (bilhões/bilhoes, milhão/milhao).
+    Usa \\b para evitar que 'mil' capture o prefixo de 'milhões'.
+    Alternativa com multiplicador vem primeiro para capturar 'R$ 6,5 bilhões'
+    completo antes de 'R$ 6' ser consumido pela alternativa numérica.
+    """
     if not text:
         return []
-    pattern = r"R\$\s?\d{1,3}(?:\.\d{3})*(?:,\d{2})?|R\$\s?\d+(?:,\d+)?\s?(?:mil|milhão|milhões|bilhão|bilhões)"
+    # Multiplicadores com e sem acento + word boundary para não pegar prefixo
+    _mult = r"(?:trilh[õo]es?\b|bilh[õo]es?\b|bilh[aã]o\b|milh[õo]es?\b|milh[aã]o\b|mil\b)"
+    pattern = (
+        # Com multiplicador: R$ 6,5 bilhões / R$ 1,2 mil
+        rf"R\$\s?\d+(?:[.,]\d+)?\s?{_mult}"
+        r"|"
+        # Número formatado: R$ 1.200.000,00 ou R$ 300,50
+        r"R\$\s?\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?"
+    )
     return re.findall(pattern, text, flags=re.IGNORECASE)

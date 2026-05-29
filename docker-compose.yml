@@ -55,6 +55,8 @@ services:
       - ./configs:/app/configs
       - ./prompts:/app/prompts
       - ./templates:/app/templates
+    ports:
+      - "8501:8501"
     restart: unless-stopped
 
   # ── n8n ─────────────────────────────────────────────────────────────────────

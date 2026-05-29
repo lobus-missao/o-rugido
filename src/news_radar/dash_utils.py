@@ -45,21 +45,34 @@ EDITORIAL_LABELS = {
     "archived":        "Arquivado",
 }
 
-PYTHON = str(_ROOT / ".venv" / "Scripts" / "python.exe")
+PYTHON = sys.executable  # funciona em Windows (.venv) e Docker (sistema)
 CLI = [PYTHON, "-m", "news_radar.cli"]
 
 
 def run_cli(*args, timeout=120) -> dict:
-    r = subprocess.run(
-        CLI + list(args),
-        capture_output=True, text=True, cwd=_ROOT, timeout=timeout,
-    )
+    try:
+        r = subprocess.run(
+            CLI + list(args),
+            capture_output=True, text=True, cwd=_ROOT, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": f"Timeout após {timeout}s"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:300]}
+
     if r.returncode == 0:
         try:
             return {"ok": True, **json.loads(r.stdout)}
         except Exception:
             return {"ok": True, "output": r.stdout.strip()[:300]}
-    return {"ok": False, "error": r.stderr.strip()[-400:]}
+
+    # Garante string limpa para evitar _repr_html_() no Streamlit
+    raw_err = (r.stderr or r.stdout or "Erro desconhecido").strip()
+    # Remove linhas de warning WSL e box-drawing do Playwright
+    lines = [l for l in raw_err.splitlines()
+             if not l.startswith("<3>WSL") and "UtilGetPpid" not in l]
+    clean = "\n".join(lines).strip()[-400:] or raw_err[:200]
+    return {"ok": False, "error": clean}
 
 
 def fmt_dt(value, chars: int = 16) -> str:
@@ -161,7 +174,9 @@ def article_card(art: dict, scope: str = "brasil", show_actions: bool = True, ke
                 exp = explain_score(art, scope)
                 st.caption(f"💡 {exp['explanation']}")
                 if exp["money_values_found"]:
-                    st.caption(f"💲 Valores: {', '.join(exp['money_values_found'])}")
+                    # Escapa $ para não ser interpretado como LaTeX pelo Streamlit
+                    vals = [v.replace("$", r"\$") for v in exp["money_values_found"]]
+                    st.caption(f"💲 Valores: {', '.join(vals)}")
 
         st.divider()
 

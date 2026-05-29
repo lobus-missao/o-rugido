@@ -79,12 +79,13 @@ else:
         p = a.get("priority") or ""
         groups.get(p, groups[""]).append(a)
 
-    for prio in ["critica", "alta", "media", "baixa", "ruido"]:
+    # Grupos por prioridade — usa subheader+container (expanders não podem ser aninhados)
+    for prio in ["critica", "alta", "media", "baixa", "ruido", ""]:
         arts = groups[prio]
         if not arts:
             continue
         icon = PRIORITY_ICON.get(prio, "⚪")
-        color = PRIORITY_COLOR.get(prio, "#6b7280")
-        with st.expander(f"{icon} {prio.upper()} — {len(arts)} notícia(s)", expanded=prio in ("critica", "alta")):
-            for art in arts[:20]:
-                article_card(art, scope=scope, show_actions=True, key_prefix=f"radar_{prio}")
+        label = prio.upper() if prio else "SEM PRIORIDADE"
+        st.markdown(f"#### {icon} {label} — {len(arts)} notícia(s)")
+        for art in arts[:20]:
+            article_card(art, scope=scope, show_actions=True, key_prefix=f"radar_{prio}")

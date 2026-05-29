@@ -1,0 +1,11 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.git
+*.egg-info
+data/cards
+data/ai_batches
+data/ai_results
+logs

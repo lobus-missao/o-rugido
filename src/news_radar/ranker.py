@@ -240,6 +240,70 @@ def combine_with_ai(auto_score: float, ai_score: float | None) -> float:
     return round(clamp(float(auto_score) * 0.58 + float(ai_score) * 0.42), 2)
 
 
+# Thresholds para classificação automática (sem IA)
+# Usa o maior score entre os 3 escopos — artigo relevante em qualquer escopo conta
+AUTO_PRIORITY_THRESHOLDS = [
+    (80, "critica"),
+    (60, "alta"),
+    (40, "media"),
+    (20, "baixa"),
+    (0,  "ruido"),
+]
+
+
+def auto_classify() -> int:
+    """Classifica priority com base no score automático, sem chamar IA.
+
+    Aplica apenas em artigos com priority IS NULL — nunca sobrescreve
+    classificação feita pela IA. Usa GREATEST dos 3 final_scores para
+    que artigos relevantes em qualquer escopo sejam bem classificados.
+
+    Retorna o número de artigos classificados.
+    """
+    import psycopg2.extras
+
+    from .db import connect
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id,
+                    GREATEST(
+                        COALESCE(final_score_brasil,   0),
+                        COALESCE(final_score_piaui,    0),
+                        COALESCE(final_score_teresina, 0)
+                    ) AS best_score
+                FROM articles
+                WHERE priority IS NULL
+            """)
+            rows = [dict(r) for r in cur.fetchall()]
+
+    if not rows:
+        return 0
+
+    batch = []
+    for row in rows:
+        score = float(row["best_score"] or 0)
+        priority = "ruido"
+        for threshold, label in AUTO_PRIORITY_THRESHOLDS:
+            if score >= threshold:
+                priority = label
+                break
+        batch.append((priority, row["id"]))
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+            psycopg2.extras.execute_batch(
+                cur,
+                # Double-check priority IS NULL no UPDATE para evitar race condition
+                "UPDATE articles SET priority = %s WHERE id = %s AND priority IS NULL",
+                batch,
+                page_size=200,
+            )
+
+    return len(batch)
+
+
 def rank_all() -> int:
     """Recalcula auto_score_* e final_score_* para todos os artigos no banco.
 
@@ -295,5 +359,8 @@ def rank_all() -> int:
                 batch,
                 page_size=100,
             )
+
+    # Classifica artigos sem priority usando scores automáticos
+    auto_classify()
 
     return len(batch)
