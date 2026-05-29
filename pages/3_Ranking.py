@@ -9,6 +9,7 @@ from news_radar.dash_utils import sidebar_controls, fmt_dt, PRIORITY_COLOR, PRIO
 from news_radar.repository import top_articles
 from news_radar.score_explainer import explain_score, COMPONENT_LABELS
 from news_radar.dashboard_queries import opportunity_score, update_editorial_status
+from news_radar.ranking import RANKING_DIMENSIONS, score_summary, DIMENSION_ICONS
 
 st.set_page_config(page_title="Ranking · News Radar", page_icon="📊", layout="wide")
 sidebar_controls()
@@ -29,11 +30,20 @@ with col4:
         ["critica", "alta", "media", "baixa", "ruido"],
         default=["critica", "alta", "media"])
 
-col_s, col_p = st.columns([2, 2])
+col_s, col_p, col_dim = st.columns([2, 1, 2])
 with col_s:
     search = st.text_input("🔍 Buscar", placeholder="título, resumo...")
 with col_p:
-    show_explanation = st.toggle("Mostrar explicação do score", value=False)
+    show_explanation = st.toggle("Mostrar explicação do score", value=True)
+with col_dim:
+    # Ordenação por dimensão IA (quando artigos têm IA)
+    sort_dim = st.selectbox(
+        "Ordenar por",
+        ["final_score", "interesse_publico", "risco_investigativo",
+         "dinheiro_publico", "gravidade", "urgencia", "relevancia_local"],
+        format_func=lambda d: RANKING_DIMENSIONS.get(d, d),
+        key="rank_sort_dim",
+    )
 
 # ── Artigos ───────────────────────────────────────────────────────────────────
 try:
@@ -47,9 +57,21 @@ except Exception as e:
     st.error(f"Erro: {e}")
 
 score_col = f"final_score_{scope}"
-st.markdown(f"**{len(articles)} artigos**")
 
-for art in articles:
+# Reordena por dimensão IA quando selecionado algo diferente de final_score
+if sort_dim != "final_score" and articles:
+    from news_radar.ranking import _extract_ai_dimension
+    articles_sorted = sorted(
+        articles,
+        key=lambda a: -_extract_ai_dimension(a, sort_dim),
+    )
+    st.caption(f"Ordenado por: {RANKING_DIMENSIONS.get(sort_dim, sort_dim)} — artigos sem IA aparecem ao final")
+else:
+    articles_sorted = articles
+
+st.markdown(f"**{len(articles_sorted)} artigos**")
+
+for art in articles_sorted:
     priority = art.get("priority") or "-"
     score = float(art.get(score_col) or 0)
     auto_col = f"auto_score_{scope}"
@@ -123,6 +145,15 @@ for art in articles:
             st.metric("Oportunidade", f"{opp:.0f}",
                       help=opp_exp)
             st.caption(f"Card: {art.get('card_status','none')}")
+
+            # Top dimensões IA (score_summary)
+            if has_ai:
+                summ = score_summary(art, scope)
+                if summ["top_dimensions"]:
+                    st.markdown("**Top dimensões IA:**")
+                    for dim, val in summ["top_dimensions"]:
+                        icon = DIMENSION_ICONS.get(dim, "")
+                        st.caption(f"{icon} {dim}: **{val:.0f}**/10")
 
             art_id = art.get("id", "")
             if st.button("🎯 Selecionar", key=f"rank_sel_{art_id[:8]}"):

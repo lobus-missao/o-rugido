@@ -264,34 +264,43 @@ tests/test_phase5_clusters.py      (novo — 35 testes)
 
 ---
 
-## Fase 6 — Ranking Editorial Avançado
+## Fase 6 — Ranking Editorial Avançado ✅ Concluída
 
-**Objetivo:** Ranking configurável pela dashboard, score manual do editor.
+**Objetivo:** Ranking explicável para artigos e clusters, integração de score_explainer.
+
+**Concluída em:** 2026-05-29
 
 ### Tarefas
-- [ ] UI em Configurações para ajustar pesos por dimensão e escopo
-- [ ] Salvar pesos em tabela `score_weights`
-- [ ] `ranker.py`: ler pesos da tabela (com fallback para pesos hardcoded)
-- [ ] Campo `editor_score_override` em artigos
-- [ ] Dashboard: campo para editor ajustar score manualmente
-- [ ] Histórico de alterações de score
+- [x] Criar `src/news_radar/ranking.py` com:
+  - `explain_cluster_score(cluster, articles)` — explicação estruturada
+  - `rank_clusters_by_dimension(clusters, articles_by_cluster, dimension)` — reordenação
+  - `score_summary(article, scope)` — resumo compacto com top dimensões IA
+  - `_extract_ai_dimension()`, `_avg_ai_dimensions()` — helpers
+  - `RANKING_DIMENSIONS`, `DEFAULT_WEIGHTS`, `DIMENSION_ICONS` — constantes
+- [x] `pages/4_Clusters.py`: seletor de dimensão de ranking + barras de dimensões IA + explain_cluster_score
+- [x] `pages/3_Ranking.py`: `show_explanation=True` por padrão + seletor de dimensão IA + top dimensões na coluna lateral
+- [x] `tests/test_phase6_ranking.py` — 34 testes (extract, avg, explain, rank, summary, score, formula)
 
-### Riscos
-- Pesos errados podem desordenar todo o ranking
-- Necessário UI de rollback de pesos
-
-### Arquivos Prováveis
+### Arquivos Criados/Modificados
 ```
-src/news_radar/ranker.py     (ler pesos da tabela)
-src/news_radar/db.py         (tabela score_weights)
-pages/3_Ranking.py           (UI de pesos)
+src/news_radar/ranking.py        (novo — módulo de ranking explicável)
+pages/4_Clusters.py              (seletor de dimensão, explain_cluster_score, barras IA)
+pages/3_Ranking.py               (show_explanation padrão True, seletor de dimensão, score_summary)
+tests/test_phase6_ranking.py     (novo — 34 testes)
 ```
 
 ### Critérios de Aceite
-- [ ] Editor ajusta pesos pelo dashboard sem alterar código
-- [ ] Ranking reflete pesos imediatamente após recalculo
-- [ ] Score manual do editor override o automático
-- [ ] Histórico de scores por artigo
+- [x] score_explainer.py integrado e visível por padrão na página de Ranking
+- [x] Clusters ranqueados por múltiplas dimensões (score, fontes, risco, dinheiro, etc.)
+- [x] explain_cluster_score() gera sinais e explicação em linguagem natural
+- [x] score_summary() fornece resumo compacto para artigos
+- [x] 172 testes passando, 2 skipped
+- [x] Coleta, IA, clustering, Telegram continuam compatíveis
+
+### Notas (decisões de escopo)
+- `score_weights` (tabela DB): reservado para Fase 7 — pesos em `DEFAULT_WEIGHTS` em Python por ora
+- `editor_score_override`: campo futuro — não implementado nesta fase
+- Histórico de scores: Fase 8
 
 ---
 

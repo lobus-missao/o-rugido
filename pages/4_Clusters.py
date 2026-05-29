@@ -1,4 +1,4 @@
-"""Aba Clusters — agrupamento de notícias similares."""
+"""Aba Clusters — agrupamento de notícias similares com ranking explicável."""
 from __future__ import annotations
 import sys, json
 from pathlib import Path
@@ -8,6 +8,10 @@ import streamlit as st
 from news_radar.dash_utils import sidebar_controls, fmt_dt, PRIORITY_COLOR, PRIORITY_ICON, run_cli
 from news_radar.dashboard_queries import compute_clusters
 from news_radar.ai_batches import build_prompt, compact_article
+from news_radar.ranking import (
+    RANKING_DIMENSIONS, DIMENSION_ICONS,
+    explain_cluster_score, rank_clusters_by_dimension,
+)
 
 st.set_page_config(page_title="Clusters · News Radar", page_icon="🔵", layout="wide")
 sidebar_controls()
@@ -37,7 +41,7 @@ with tab_db:
     st.subheader("Clusters Persistidos")
 
     # Filtros
-    col_f1, col_f2, col_f3 = st.columns(3)
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
     with col_f1:
         db_scope = st.selectbox("Escopo", ["todos", "brasil", "piaui", "teresina"], key="db_scope")
     with col_f2:
@@ -49,6 +53,16 @@ with tab_db:
         )
     with col_f3:
         db_limit = st.number_input("Máx. clusters", 5, 100, 30, key="db_limit")
+    with col_f4:
+        dim_options = list(RANKING_DIMENSIONS.keys())
+        dim_labels = list(RANKING_DIMENSIONS.values())
+        db_dimension = st.selectbox(
+            "Ordenar por",
+            dim_options,
+            index=0,
+            format_func=lambda d: RANKING_DIMENSIONS.get(d, d),
+            key="db_dimension",
+        )
 
     col_run, col_info = st.columns([1, 3])
     with col_run:
@@ -88,6 +102,19 @@ with tab_db:
         db_clusters = list_db_clusters(scope=scope_filter, status="active", limit=int(db_limit))
         if db_type:
             db_clusters = [c for c in db_clusters if c["cluster_type"] in db_type]
+
+        # Para dimensões que requerem artigos, pré-carrega (só se dimensão != cluster_score)
+        articles_by_cluster: dict = {}
+        if db_dimension not in ("cluster_score", "source_count", "article_count") and db_clusters:
+            for c in db_clusters:
+                try:
+                    articles_by_cluster[c["id"]] = get_db_cluster_articles(c["id"])
+                except Exception:
+                    articles_by_cluster[c["id"]] = []
+
+        # Aplica ranking multi-dimensional
+        if db_clusters:
+            db_clusters = rank_clusters_by_dimension(db_clusters, articles_by_cluster, db_dimension)
     except Exception as e:
         db_clusters = []
         st.error(f"Erro ao carregar clusters: {e}")
@@ -106,16 +133,21 @@ with tab_db:
             "keyword_comum":  "🔑 Keyword",
         }
 
+        show_explanation = st.toggle("Mostrar explicação de score por cluster", value=True, key="db_show_exp")
+
         for i, cluster in enumerate(db_clusters):
             score = float(cluster.get("cluster_score") or 0)
             art_count = cluster.get("article_count", 0)
             src_count = cluster.get("source_count", 0)
             cluster_type = cluster.get("cluster_type", "")
             type_lbl = type_labels.get(cluster_type, cluster_type)
+            rank_val = cluster.get("rank_value", score)
+            rank_dim_lbl = RANKING_DIMENSIONS.get(db_dimension, db_dimension)
 
             header = (
-                f"{type_lbl} **{cluster['title'][:60]}** "
-                f"— {art_count} artigos · {src_count} fontes · ★{score:.1f}"
+                f"{type_lbl} **{cluster['title'][:55]}** "
+                f"— {art_count} artigos · {src_count} fontes · "
+                f"{rank_dim_lbl}: **{rank_val:.1f}**"
             )
 
             with st.expander(header, expanded=(i < 2)):
@@ -129,6 +161,37 @@ with tab_db:
                         st.caption(f"Label: _{cluster['label']}_")
                     st.caption(f"Score: **{score:.2f}**")
                     st.caption(f"Atualizado: {fmt_dt(cluster.get('updated_at'), 16)}")
+
+                    # Explicação de score
+                    if show_explanation:
+                        arts_for_exp = articles_by_cluster.get(cluster["id"])
+                        if arts_for_exp is None:
+                            try:
+                                arts_for_exp = get_db_cluster_articles(cluster["id"])
+                            except Exception:
+                                arts_for_exp = []
+                        exp = explain_cluster_score(cluster, arts_for_exp)
+                        st.markdown(f"💡 _{exp['explanation']}_")
+                        if exp["has_ai"] and exp["ai_dimensions"]:
+                            st.caption(f"Análise de IA: {exp['ai_article_count']}/{art_count} artigos")
+                            # Top dimensões IA com barra
+                            top_dims = sorted(
+                                exp["ai_dimensions"].items(), key=lambda x: -x[1]
+                            )[:5]
+                            for dim, val in top_dims:
+                                icon = DIMENSION_ICONS.get(dim, "")
+                                pct = int(val * 10)
+                                bar = (
+                                    f'<div style="background:#e2e8f0;border-radius:3px;height:4px;margin:1px 0">'
+                                    f'<div style="background:#3b82f6;width:{pct}%;height:4px;border-radius:3px;"></div>'
+                                    f'</div>'
+                                )
+                                st.markdown(
+                                    f'<small>{icon} {dim}: **{val:.1f}**/10</small>{bar}',
+                                    unsafe_allow_html=True,
+                                )
+
+                    st.divider()
 
                     # Ações
                     if st.button("🗄️ Arquivar cluster", key=f"arch_{cluster['id']}", type="secondary"):
