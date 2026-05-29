@@ -232,7 +232,7 @@ with tab_db:
                                 )
 
                         # Selecionar artigo primário
-                        art_options = {a["title"][:60]: a["article_id"] for a in arts}
+                        art_options = {a["title"][:60]: a["id"] for a in arts}
                         current_primary = next(
                             (a["title"][:60] for a in arts if a.get("is_primary")), None
                         )

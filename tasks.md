@@ -448,3 +448,91 @@ tests/test_phase9_hardening.py    (novo — 22 testes)
 - Pool de conexões PostgreSQL: requer configuração de servidor e benchmark real
 - Paginação em queries > 10k artigos: implementar quando necessário com dados reais
 - Separação db.py em múltiplos módulos: refatoração maior, reservada para versão futura
+
+---
+
+## Fase 10.1 — Base de Dados e Scraping de Portais ✅ Concluída
+
+**Objetivo:** Arquitetura observável e controlada para scraping de portais brasileiros, piauienses e teresinenses, coexistindo com o pipeline RSS atual.
+
+**Concluída em:** 2026-05-29
+
+### Tarefas
+- [x] `trafilatura>=1.12,<2.0` adicionado ao `requirements.txt`
+- [x] Migrations versionadas: `source_rules`, `scrape_runs`, `scraped_pages` (`db.py` — 10 entradas v10_*)
+- [x] Pacote `src/news_radar/scraper/` criado com 8 módulos:
+  - `__init__.py` — exports públicos
+  - `models.py` — FetchResult, ExtractionResult, ScrapeRunStats
+  - `fetcher.py` — download com timeout/retry/user-agent
+  - `extractors.py` — trafilatura, css_selectors, playwright
+  - `strategies.py` — wrappers de estratégia
+  - `registry.py` — mapeamento strategy → executor
+  - `rules.py` — CRUD de source_rules
+  - `runs.py` — CRUD de scrape_runs/scraped_pages
+  - `jobs.py` — run_extraction_test, run_source_scrape
+- [x] `config/portal_sources_seed.yaml` — 34 portais seedados (14 nacionais, 13 PI/THE, 7 oficiais locais, + nacionais oficiais)
+- [x] `scripts/seed_portal_sources.py` — seed idempotente com --dry-run
+- [x] CLI: `test-extraction --url --strategy --timeout`
+- [x] CLI: `scrape-source --source-id|--source-name --urls --dry-run --max-items`
+- [x] `dashboard_queries.py`: scraping_overview, scraping_recent_runs, scraping_source_rules
+- [x] `pages/12_Scraping.py` — 5 abas: Visão Geral, Regras de Fonte, Execuções, Testar URL, Portais Candidatos
+- [x] `tests/test_phase10_scraping.py` — 30 testes (migrations, seed, fetcher, extractor, registry, jobs, dashboard, CLI, compat)
+- [x] `docs/OPERATIONS.md` — seção de scraping adicionada
+- [x] `tasks.md` atualizado
+
+### Arquivos Criados/Modificados
+```
+requirements.txt                         (trafilatura adicionado)
+src/news_radar/db.py                     (10 entradas v10_* em MIGRATION_SQL)
+src/news_radar/scraper/__init__.py       (novo)
+src/news_radar/scraper/models.py         (novo)
+src/news_radar/scraper/fetcher.py        (novo)
+src/news_radar/scraper/extractors.py     (novo)
+src/news_radar/scraper/strategies.py     (novo)
+src/news_radar/scraper/registry.py       (novo)
+src/news_radar/scraper/rules.py          (novo)
+src/news_radar/scraper/runs.py           (novo)
+src/news_radar/scraper/jobs.py           (novo)
+src/news_radar/cli.py                    (2 comandos: test-extraction, scrape-source)
+src/news_radar/dashboard_queries.py     (3 funções de scraping)
+config/portal_sources_seed.yaml          (novo — 34 portais)
+scripts/seed_portal_sources.py           (novo — seed idempotente)
+pages/12_Scraping.py                     (novo — 5 abas)
+tests/test_phase10_scraping.py           (novo — 30 testes)
+docs/OPERATIONS.md                       (seção scraping adicionada)
+```
+
+### Critérios de Aceite
+- [x] Banco possui tabelas source_rules, scrape_runs, scraped_pages
+- [x] Seed de portais existe e é idempotente
+- [x] Portais candidatos aparecem na dashboard (aba "Portais Candidatos")
+- [x] É possível testar uma URL pela dashboard (aba "Testar URL")
+- [x] É possível rodar test-extraction via CLI
+- [x] scrape_runs registra sucesso/erro
+- [x] RSS atual continua funcionando (collector.py não alterado)
+- [x] Docker continua subindo (migrations são aditivas)
+- [x] Testes passam (30 novos + todos os anteriores)
+- [x] tasks.md atualizado
+- [x] docs/OPERATIONS.md atualizado
+
+### Como usar
+```bash
+# Aplicar migrations
+python -m news_radar.cli init-db
+
+# Popular portais candidatos (enabled=False)
+python scripts/seed_portal_sources.py
+python scripts/seed_portal_sources.py --dry-run  # simula sem alterar
+
+# Testar extração de URL
+python -m news_radar.cli test-extraction --url "https://g1.globo.com/pi/" --strategy trafilatura
+
+# Scraping com dry-run (não insere artigos)
+python -m news_radar.cli scrape-source --source-name "G1 Piauí" --urls "https://g1.globo.com/pi/noticia1/" --dry-run
+```
+
+### Notas (fora do escopo desta fase)
+- Ativação real de fontes de scraping: validar cada portal individualmente antes de enabled=true
+- Integração de scraped_pages → articles (pipeline de ingestão scraping): Fase 10.2
+- Sitemap/news-sitemap strategy: Fase 10.2
+- Scrapy: não implementado intencionalmente — arquitetura preparada para adição futura

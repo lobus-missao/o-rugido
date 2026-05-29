@@ -921,3 +921,185 @@ def audit_metrics(days_back: int = 7) -> dict:
         }
     except Exception:
         return empty
+
+
+# ── Scraping — Fase 10.1 ──────────────────────────────────────────────────────
+
+def scraping_overview() -> dict:
+    """Visão geral do módulo de scraping: fontes, runs, taxa de sucesso."""
+    empty: dict = {
+        "sources_with_rules": 0,
+        "rules_enabled": 0,
+        "runs_total": 0,
+        "runs_ok": 0,
+        "runs_error": 0,
+        "success_rate": 0.0,
+        "pages_scraped": 0,
+        "pages_ok": 0,
+        "sources_with_error": 0,
+        "last_run_at": None,
+    }
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                # Verifica se as tabelas existem
+                cur.execute("""
+                    SELECT COUNT(*) n FROM information_schema.tables
+                    WHERE table_schema='public' AND table_name='source_rules'
+                """)
+                if cur.fetchone()["n"] == 0:
+                    return empty
+
+                cur.execute("SELECT COUNT(DISTINCT source_id) n FROM source_rules")
+                sources_with_rules = cur.fetchone()["n"] or 0
+
+                cur.execute("SELECT COUNT(*) n FROM source_rules WHERE enabled = TRUE")
+                rules_enabled = cur.fetchone()["n"] or 0
+
+                cur.execute("""
+                    SELECT
+                        COUNT(*) total,
+                        COUNT(*) FILTER (WHERE status='ok') ok_runs,
+                        COUNT(*) FILTER (WHERE status='error') error_runs,
+                        MAX(started_at) last_run
+                    FROM scrape_runs
+                """)
+                row = dict(cur.fetchone())
+
+                cur.execute("SELECT COUNT(*) n FROM scraped_pages")
+                pages_total = cur.fetchone()["n"] or 0
+
+                cur.execute("SELECT COUNT(*) n FROM scraped_pages WHERE extraction_status='ok'")
+                pages_ok = cur.fetchone()["n"] or 0
+
+                # Fontes com erro na última run
+                cur.execute("""
+                    SELECT COUNT(DISTINCT source_id) n FROM scrape_runs
+                    WHERE status = 'error'
+                      AND started_at >= NOW() - INTERVAL '24 hours'
+                """)
+                sources_err = cur.fetchone()["n"] or 0
+
+                total = int(row["total"] or 0)
+                ok = int(row["ok_runs"] or 0)
+                success_rate = round(ok / total * 100, 1) if total else 0.0
+
+        return {
+            "sources_with_rules": int(sources_with_rules),
+            "rules_enabled": int(rules_enabled),
+            "runs_total": total,
+            "runs_ok": ok,
+            "runs_error": int(row["error_runs"] or 0),
+            "success_rate": success_rate,
+            "pages_scraped": int(pages_total),
+            "pages_ok": int(pages_ok),
+            "sources_with_error": int(sources_err),
+            "last_run_at": row.get("last_run"),
+        }
+    except Exception:
+        return empty
+
+
+def scraping_recent_runs(limit: int = 50, source_id: int | None = None, status: str | None = None) -> list[dict]:
+    """Lista scrape_runs recentes com nome da fonte."""
+    try:
+        clauses = []
+        params: list[Any] = []
+        if source_id is not None:
+            clauses.append("sr.source_id = %s")
+            params.append(source_id)
+        if status:
+            clauses.append("sr.status = %s")
+            params.append(status)
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        params.append(limit)
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(f"""
+                    SELECT sr.*, s.name AS source_name, s.scope AS source_scope
+                    FROM scrape_runs sr
+                    LEFT JOIN sources s ON sr.source_id = s.id
+                    {where}
+                    ORDER BY sr.started_at DESC
+                    LIMIT %s
+                """, params)
+                return [dict(r) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
+def daily_article_activity(days_back: int = 90) -> list[dict]:
+    """
+    Retorna contagem de artigos capturados por dia nos últimos N dias.
+    Usado pelo calendar heatmap na página de Operação.
+    Retorna lista de dicts: {date, count, scope_brasil, scope_piaui, scope_teresina}
+    """
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        DATE(created_at AT TIME ZONE 'America/Fortaleza') AS day,
+                        COUNT(*) AS total,
+                        COUNT(*) FILTER (WHERE source_scope = 'brasil') AS brasil,
+                        COUNT(*) FILTER (WHERE source_scope = 'piaui')  AS piaui,
+                        COUNT(*) FILTER (WHERE source_scope = 'teresina') AS teresina
+                    FROM articles
+                    WHERE created_at >= %s
+                    GROUP BY day
+                    ORDER BY day
+                    """,
+                    (cutoff,),
+                )
+                return [
+                    {
+                        "date": str(row["day"]),
+                        "count": int(row["total"]),
+                        "brasil": int(row["brasil"]),
+                        "piaui": int(row["piaui"]),
+                        "teresina": int(row["teresina"]),
+                    }
+                    for row in cur.fetchall()
+                ]
+    except Exception:
+        return []
+
+
+def scraping_source_rules(
+    enabled: bool | None = None,
+    strategy: str | None = None,
+    scope: str | None = None,
+) -> list[dict]:
+    """Lista source_rules com dados da fonte."""
+    try:
+        clauses = []
+        params: list[Any] = []
+        if enabled is not None:
+            clauses.append("sr.enabled = %s")
+            params.append(enabled)
+        if strategy:
+            clauses.append("sr.strategy = %s")
+            params.append(strategy)
+        if scope:
+            clauses.append("s.scope = %s")
+            params.append(scope)
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(f"""
+                    SELECT sr.*,
+                           s.name AS source_name,
+                           s.scope AS source_scope,
+                           s.url AS source_base_url,
+                           s.trust AS source_trust,
+                           s.enabled AS source_enabled
+                    FROM source_rules sr
+                    LEFT JOIN sources s ON sr.source_id = s.id
+                    {where}
+                    ORDER BY s.scope, s.name
+                """, params)
+                return [dict(r) for r in cur.fetchall()]
+    except Exception:
+        return []

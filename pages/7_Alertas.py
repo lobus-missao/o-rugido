@@ -107,4 +107,4 @@ for alrt in filtered:
             from news_radar.ai_batches import build_prompt, compact_article
             prompt = build_prompt("brasil", [compact_article(art)])
             st.text_area("Prompt para IA:", value=prompt, height=200,
-                         key=f"alrt_prompt_area_{art_id[:8]}")
+                         key=f"alrt_prompt_area_{art_id[:8]}_{alert_type}")

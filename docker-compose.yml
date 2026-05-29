@@ -32,8 +32,11 @@ services:
     volumes:
       - ./data:/app/data
       - ./configs:/app/configs
+      - ./config:/app/config
       - ./prompts:/app/prompts
       - ./templates:/app/templates
+      - ./src:/app/src
+      - ./pages:/app/pages
     ports:
       - "8888:8888"
     restart: unless-stopped
@@ -53,8 +56,11 @@ services:
     volumes:
       - ./data:/app/data
       - ./configs:/app/configs
+      - ./config:/app/config
       - ./prompts:/app/prompts
       - ./templates:/app/templates
+      - ./src:/app/src
+      - ./pages:/app/pages
     ports:
       - "8501:8501"
     restart: unless-stopped

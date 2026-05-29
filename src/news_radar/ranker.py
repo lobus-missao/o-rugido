@@ -53,16 +53,103 @@ PIAUI_TERMS = [
     # "picos" removido — falso positivo em "picos de calor", "picos de energia", etc.
 ]
 
-TERESINA_TERMS = [
-    "teresina", "prefeitura de teresina", "câmara municipal de teresina",
-    "camara municipal de teresina",
-    "fundação municipal de saúde", "fundacao municipal de saude",
-    "semec", "strans", "eturb", "saad",
-    "arsete", "hut", "hospital de urgência de teresina", "hospital de urgencia de teresina",
-    "teresinense",
-    # Removidos por serem genéricos demais (aplicam-se a qualquer cidade brasileira):
-    # "fms" — abreviação sem especificidade; "zona norte", "zona sul", "zona leste", "zona sudeste"
+# ── Sinais de Teresina ────────────────────────────────────────────────────────
+# Organizado em tiers de especificidade.
+# Hard gate: artigo precisa de pelo menos 1 sinal aqui para receber score > 0.
+#
+# Tier 1 — Explícito / altíssima especificidade (peso máximo no scoring)
+TERESINA_EXPLICIT = [
+    "teresina", "teresinense",
+    "prefeitura de teresina", "câmara de teresina", "camara de teresina",
+    "câmara municipal de teresina", "camara municipal de teresina",
+    "prefeito de teresina",
+    "capital do piauí", "capital do piaui",
+    "capital piauiense",
 ]
+
+# Tier 2 — Instituições e órgãos exclusivos de Teresina
+TERESINA_INSTITUTIONS = [
+    # Saúde municipal
+    "hut", "hospital de urgência de teresina", "hospital de urgencia de teresina",
+    "fundação municipal de saúde", "fundacao municipal de saude",
+    "fms teresina",
+    "upa zona norte", "upa zona sul", "upa zona leste", "upa zona sudeste",
+    "upa teresina",
+    "policlínica teresina", "policlinica teresina",
+    "cmu teresina",
+    # Transporte e urbanismo
+    "strans", "eturb",
+    "terminal integração", "terminal de integração",
+    "terminal de integracao", "terminal integracao",
+    "ciretran teresina",
+    # Educação
+    "semec",
+    "seduc teresina",
+    "uespi teresina",
+    # Assistência social / segurança
+    "saad", "arsete",
+    "semdec teresina",
+    "creas teresina", "cras teresina",
+    # Segurança
+    "bpre", "batalhão de polícia de eventos",
+    "pm teresina", "policia teresina",
+    "delegacia teresina",
+    # Obras e urbanização
+    "semar teresina",
+    "semplan teresina",
+    "semduh",
+]
+
+# Tier 3 — Bairros, zonas e lugares com alta especificidade
+TERESINA_PLACES = [
+    # Bairros com alta frequência noticiosa
+    "dirceu arcoverde", "bairro dirceu",
+    "promorar", "bairro promorar",
+    "mocambinho", "bairro mocambinho",
+    "piçarreira", "picarreira",
+    "parque piauí", "parque piaui",
+    "pedra mole", "bairro pedra mole",
+    "mafrense", "bairro mafrense",
+    "santa maria da codipi", "codipi",
+    "bairro fátima teresina", "bairro fatima teresina",
+    "bairro jóquei", "bairro joquei",
+    "satélite", "bairro satélite",
+    "lourival parente",
+    "ininga", "bairro ininga",
+    "vale quem tem", "bairro vale quem tem",
+    "cidade operária", "cidade operaria",
+    "porenquanto",
+    "redenção teresina",
+    "campestre teresina",
+    # Lugares públicos e regiões icônicas
+    "potycabana", "parque potycabana",
+    "parque da cidade teresina",
+    "arena dirceu",
+    "centro de teresina",
+    "centro teresina",
+    "av. frei serafim", "avenida frei serafim",
+    "av. nossa senhora de fátima", "avenida nossa senhora de fatima",
+    "rio poty", "rio parnaíba teresina",
+    "ponte estaiada teresina",
+    "mercado do peixe teresina",
+    "shopping rio poty", "shopping riverside",
+    "arena potilandia",
+]
+
+# Lista unificada usada pelo count_terms (mantém compatibilidade)
+TERESINA_TERMS = TERESINA_EXPLICIT + TERESINA_INSTITUTIONS + TERESINA_PLACES
+
+
+def _teresina_signal_strength(text: str) -> tuple[int, int, int]:
+    """
+    Retorna (tier1, tier2, tier3) com contagem de sinais por tier.
+    Usado para pontuação ponderada no score de Teresina.
+    """
+    t = text.lower()
+    t1 = count_terms(t, TERESINA_EXPLICIT)
+    t2 = count_terms(t, TERESINA_INSTITUTIONS)
+    t3 = count_terms(t, TERESINA_PLACES)
+    return t1, t2, t3
 
 POLITICAL_TERMS = [
     "eleição", "eleicao", "campanha", "partido", "vereador", "deputado", "senador",
@@ -121,6 +208,7 @@ def automatic_scores(article: dict[str, Any]) -> dict[str, Any]:
     brazil_count = count_terms(text, BRAZIL_TERMS)
     piaui_count = count_terms(text, PIAUI_TERMS)
     teresina_count = count_terms(text, TERESINA_TERMS)
+    ter_t1, ter_t2, ter_t3 = _teresina_signal_strength(text)
     money_values = extract_money_values(text)
     novelty = recency_score(published_at)
 
@@ -182,23 +270,31 @@ def automatic_scores(article: dict[str, Any]) -> dict[str, Any]:
 
     brasil_bonus = min(brazil_count * 4, 16)
     piaui_bonus = min(piaui_count * 7, 28)
-    teresina_bonus = min(teresina_count * 9, 36)
 
-    # Fonte local carrega relevância geográfica mesmo sem citar o lugar explicitamente.
+    # Teresina: pontuação ponderada por tier de especificidade
+    # Tier 1 (explícito) vale mais; tier 3 (bairros) vale menos
+    teresina_bonus = min(ter_t1 * 12 + ter_t2 * 8 + ter_t3 * 5, 40)
+
+    # Fonte local carrega relevância geográfica mesmo sem citar o lugar.
     if source_scope == "piaui":
         piaui_bonus += 10
     if source_scope == "teresina":
         piaui_bonus += 10
-        teresina_bonus += 14
+        teresina_bonus += 12  # amplifica quando fonte já é de Teresina
 
     score_brasil = clamp(common + brasil_bonus)
     score_piaui = clamp(common + piaui_bonus)
-    score_teresina = clamp(common + piaui_bonus * 0.55 + teresina_bonus)
 
-    # Para evitar que notícia nacional comum domine o ranking local.
+    # Hard gate: artigo sem sinal de Teresina no texto não entra no ranking de Teresina.
+    # Garante que só artigos com menção real (título ou resumo) classificam a cidade.
+    if teresina_count == 0:
+        score_teresina = 0.0
+    else:
+        score_teresina = clamp(common + piaui_bonus * 0.45 + teresina_bonus)
+
+    # Penaliza notícia nacional sem menção local no ranking piauiense.
     if piaui_count == 0 and teresina_count == 0 and source_scope == "brasil":
         score_piaui *= 0.55
-        score_teresina *= 0.35
 
     return {
         "auto_score_brasil": round(score_brasil, 2),

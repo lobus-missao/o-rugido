@@ -235,6 +235,85 @@ MIGRATION_SQL: dict[str, str] = {
     "v8_dispatches_review_notes": (
         "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS review_notes TEXT"
     ),
+    # Fase 10.1 — Scraping infra
+    "v10_source_rules_table": """
+        CREATE TABLE IF NOT EXISTS source_rules (
+            id SERIAL PRIMARY KEY,
+            source_id INTEGER REFERENCES sources(id) ON DELETE SET NULL,
+            strategy TEXT NOT NULL DEFAULT 'rss',
+            list_url TEXT,
+            article_url_pattern TEXT,
+            title_selector TEXT,
+            content_selector TEXT,
+            date_selector TEXT,
+            author_selector TEXT,
+            image_selector TEXT,
+            enabled BOOLEAN NOT NULL DEFAULT FALSE,
+            rate_limit_seconds NUMERIC NOT NULL DEFAULT 2.0,
+            timeout_seconds INTEGER NOT NULL DEFAULT 30,
+            config_json JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """,
+    "v10_source_rules_idx_source": (
+        "CREATE INDEX IF NOT EXISTS idx_source_rules_source ON source_rules(source_id)"
+    ),
+    "v10_source_rules_idx_strategy": (
+        "CREATE INDEX IF NOT EXISTS idx_source_rules_strategy ON source_rules(strategy)"
+    ),
+    "v10_source_rules_idx_enabled": (
+        "CREATE INDEX IF NOT EXISTS idx_source_rules_enabled ON source_rules(enabled)"
+    ),
+    "v10_scrape_runs_table": """
+        CREATE TABLE IF NOT EXISTS scrape_runs (
+            id SERIAL PRIMARY KEY,
+            source_id INTEGER REFERENCES sources(id) ON DELETE SET NULL,
+            strategy TEXT NOT NULL DEFAULT 'trafilatura',
+            status TEXT NOT NULL DEFAULT 'running',
+            started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            finished_at TIMESTAMPTZ,
+            found_count INTEGER NOT NULL DEFAULT 0,
+            inserted_count INTEGER NOT NULL DEFAULT 0,
+            updated_count INTEGER NOT NULL DEFAULT 0,
+            skipped_count INTEGER NOT NULL DEFAULT 0,
+            error_count INTEGER NOT NULL DEFAULT 0,
+            error_message TEXT,
+            metadata_json JSONB
+        )
+    """,
+    "v10_scrape_runs_idx_source": (
+        "CREATE INDEX IF NOT EXISTS idx_scrape_runs_source ON scrape_runs(source_id, started_at DESC)"
+    ),
+    "v10_scrape_runs_idx_status": (
+        "CREATE INDEX IF NOT EXISTS idx_scrape_runs_status ON scrape_runs(status, started_at DESC)"
+    ),
+    "v10_scraped_pages_table": """
+        CREATE TABLE IF NOT EXISTS scraped_pages (
+            id SERIAL PRIMARY KEY,
+            source_id INTEGER REFERENCES sources(id) ON DELETE SET NULL,
+            run_id INTEGER REFERENCES scrape_runs(id) ON DELETE SET NULL,
+            url TEXT NOT NULL,
+            status_code INTEGER,
+            content_hash TEXT,
+            html_path TEXT,
+            extracted_text_path TEXT,
+            extraction_status TEXT NOT NULL DEFAULT 'pending',
+            title TEXT,
+            published_at TIMESTAMPTZ,
+            error_message TEXT,
+            fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """,
+    "v10_scraped_pages_idx_url": (
+        "CREATE INDEX IF NOT EXISTS idx_scraped_pages_url ON scraped_pages(url)"
+    ),
+    "v10_scraped_pages_idx_source": (
+        "CREATE INDEX IF NOT EXISTS idx_scraped_pages_source ON scraped_pages(source_id, fetched_at DESC)"
+    ),
+    "v10_scraped_pages_idx_run": (
+        "CREATE INDEX IF NOT EXISTS idx_scraped_pages_run ON scraped_pages(run_id)"
+    ),
 }
 
 DATE_COLUMN_MIGRATIONS = {

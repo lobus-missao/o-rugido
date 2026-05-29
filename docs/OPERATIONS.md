@@ -199,3 +199,89 @@ POST /api/review/card                 # aprovar/rejeitar card
 | Coleta para | n8n ou scheduler desativado | Ativar NEWS_RADAR_SCHEDULER=1 ou reiniciar n8n |
 | Banco cheio de artigos antigos | `stats` mostra total alto | `cleanup --days 30` |
 | init-db falha | Banco indisponível | `docker ps` — verificar se postgres está rodando |
+
+---
+
+## Scraping de Portais (Fase 10.1)
+
+### Setup inicial
+
+```bash
+# 1. Aplicar migrations (source_rules, scrape_runs, scraped_pages)
+python -m news_radar.cli init-db
+
+# 2. Popular portais candidatos no banco (todos com enabled=False)
+python scripts/seed_portal_sources.py
+
+# 3. Verificar o que foi cadastrado (dry-run)
+python scripts/seed_portal_sources.py --dry-run
+```
+
+### Testar extração de uma URL
+
+```bash
+# Via CLI
+python -m news_radar.cli test-extraction --url "https://exemplo.com/noticia/1" --strategy trafilatura
+python -m news_radar.cli test-extraction --url "https://g1.globo.com/pi/" --strategy trafilatura --timeout 15
+
+# Via Dashboard: página "🕷️ Scraping" → aba "Testar URL"
+```
+
+### Testar scraping de uma fonte (dry-run)
+
+```bash
+# Via CLI (não insere artigos)
+python -m news_radar.cli scrape-source \
+  --source-name "G1 Piauí" \
+  --urls "https://g1.globo.com/pi/noticia-1/" "https://g1.globo.com/pi/noticia-2/" \
+  --dry-run
+
+# Via source_id
+python -m news_radar.cli scrape-source --source-id 42 --urls "https://..." --dry-run
+```
+
+### Monitoramento via Dashboard
+
+A página **🕷️ Scraping** (número 12 no sidebar) oferece:
+- **Visão Geral**: métricas de fontes, execuções, taxa de sucesso
+- **Regras de Fonte**: listar/filtrar source_rules por estratégia, status, escopo
+- **Execuções**: histórico de scrape_runs com erros e métricas
+- **Testar URL**: extração ao vivo no browser
+- **Portais Candidatos**: lista do seed com status de cadastro no banco
+
+### Estratégias disponíveis
+
+| Estratégia | Quando usar | Velocidade |
+|---|---|---|
+| `rss` | Feed RSS disponível | Alta |
+| `trafilatura` | HTML estático, sem JS | Alta |
+| `css_selectors` | Estrutura previsível, seletores configurados | Média |
+| `playwright` | JavaScript pesado, último recurso | Baixa |
+
+### Regras de segurança
+
+- **Não burlar** paywall, login, captcha, ou robots.txt
+- Rate limit mínimo: 2s entre requisições por domínio (configurável em `source_rules.rate_limit_seconds`)
+- User-Agent identificável: `NewsRadarRSS/1.0 (editorial monitoring bot)`
+- Todas as fontes ficam com `enabled=False` até validação manual
+- `dry_run=True` em scrape-source nunca insere artigos no banco
+
+### Variáveis de ambiente para scraping
+
+Nenhuma variável nova é necessária. O scraping usa a mesma `DATABASE_URL` já configurada.
+
+### Tabelas de suporte
+
+```sql
+-- Ver todas as source_rules
+SELECT sr.id, s.name, sr.strategy, sr.enabled, sr.list_url
+FROM source_rules sr JOIN sources s ON sr.source_id = s.id;
+
+-- Ver execuções recentes
+SELECT id, source_id, strategy, status, found_count, error_count, started_at
+FROM scrape_runs ORDER BY started_at DESC LIMIT 20;
+
+-- Ver páginas raspadas
+SELECT id, url, extraction_status, title, fetched_at
+FROM scraped_pages ORDER BY fetched_at DESC LIMIT 20;
+```

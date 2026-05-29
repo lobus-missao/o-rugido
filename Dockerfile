@@ -33,10 +33,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Playwright: instala o Chromium bundled + dependências de sistema
-# --with-deps instala libc/libX11 extras necessários (equivale a playwright install-deps)
+# Playwright: instala apenas o Chromium bundled (sem --with-deps — deps já instaladas acima)
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN playwright install chromium --with-deps
+RUN playwright install chromium
 
 COPY . .
 RUN pip install --no-cache-dir -e .

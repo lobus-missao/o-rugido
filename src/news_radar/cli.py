@@ -290,6 +290,70 @@ def cmd_cluster_articles(args) -> None:
     print(json.dumps(result, ensure_ascii=False, indent=2, default=_json_default))
 
 
+def cmd_test_extraction(args) -> None:
+    """Testa a extração de uma URL sem salvar artigo no banco."""
+    from .scraper.jobs import run_extraction_test
+    strategy = args.strategy or "trafilatura"
+    result = run_extraction_test(url=args.url, strategy=strategy, timeout=args.timeout)
+    output = {
+        "url": result.url,
+        "strategy": result.strategy,
+        "ok": result.ok,
+        "title": result.title,
+        "author": result.author,
+        "date": result.date_str,
+        "image": result.image_url,
+        "content_length": len(result.content) if result.content else 0,
+        "content_preview": (result.content or "")[:300],
+        "extraction_quality": result.extraction_quality,
+        "quality_label": result.quality_label(),
+        "error": result.error,
+    }
+    print(json.dumps(output, ensure_ascii=False, indent=2, default=_json_default))
+
+
+def cmd_scrape_source(args) -> None:
+    """Executa scraping de uma fonte pelo source_id ou source_name."""
+    from .scraper.jobs import run_source_scrape
+    from .sources import get_source_by_name
+    from .scraper.rules import get_rule_for_source
+
+    source_id = args.source_id
+    if not source_id and args.source_name:
+        src = get_source_by_name(args.source_name)
+        if not src:
+            print(json.dumps({"ok": False, "error": f"Fonte não encontrada: {args.source_name}"},
+                             ensure_ascii=False))
+            return
+        source_id = src["id"]
+
+    if not source_id:
+        print(json.dumps({"ok": False, "error": "Informe --source-id ou --source-name"}, ensure_ascii=False))
+        return
+
+    rule = get_rule_for_source(source_id)
+    if not rule:
+        print(json.dumps({"ok": False, "error": f"Nenhuma source_rule para source_id={source_id}"},
+                         ensure_ascii=False))
+        return
+
+    if not args.urls:
+        print(json.dumps({"ok": False, "error": "Informe --urls <url1> [url2 ...]"}, ensure_ascii=False))
+        return
+
+    result = run_source_scrape(
+        source_id=source_id,
+        strategy=rule["strategy"],
+        urls=args.urls,
+        config=rule.get("config_json") or {},
+        timeout=rule.get("timeout_seconds", 30),
+        rate_limit=float(rule.get("rate_limit_seconds", 2.0)),
+        dry_run=args.dry_run,
+        max_items=args.max_items,
+    )
+    print(json.dumps(result, ensure_ascii=False, indent=2, default=_json_default))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="news-radar",
@@ -382,6 +446,21 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("backup", help="Exporta banco para arquivo .sql via pg_dump.")
     p.add_argument("--output", help="Arquivo de saída (default: backup_YYYYMMDD_HHMMSS.sql)")
     p.set_defaults(func=cmd_backup)
+
+    p = sub.add_parser("test-extraction", help="Testa extração de uma URL sem salvar no banco.")
+    p.add_argument("--url", required=True, help="URL a ser testada")
+    p.add_argument("--strategy", choices=["trafilatura", "css_selectors", "playwright"],
+                   default="trafilatura", help="Estratégia de extração (default: trafilatura)")
+    p.add_argument("--timeout", type=int, default=30, help="Timeout em segundos (default: 30)")
+    p.set_defaults(func=cmd_test_extraction)
+
+    p = sub.add_parser("scrape-source", help="Executa scraping de uma fonte (--dry-run não insere artigos).")
+    p.add_argument("--source-id", type=int, help="ID da fonte na tabela sources")
+    p.add_argument("--source-name", help="Nome da fonte na tabela sources")
+    p.add_argument("--urls", nargs="+", metavar="URL", help="URLs para scraping")
+    p.add_argument("--dry-run", action="store_true", help="Extrai sem inserir artigos")
+    p.add_argument("--max-items", type=int, default=20, help="Máximo de URLs a processar (default: 20)")
+    p.set_defaults(func=cmd_scrape_source)
 
     return parser
 

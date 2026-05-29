@@ -1,0 +1,560 @@
+# Portal Sources Seed — Fase 10.1
+# Portais candidatos para monitoramento. enabled=false por padrão.
+# Ativar apenas após validação de RSS/sitemap/estratégia.
+# needs_validation=true indica que URL de RSS/sitemap não foi confirmada.
+#
+# Campos:
+#   name                : nome único do portal
+#   base_url            : URL principal do portal
+#   rss_url             : URL de feed RSS (null se desconhecida)
+#   scope               : brasil | piaui | teresina
+#   source_type         : portal | oficial | rss | api | scraping
+#   strategy_suggested  : rss | sitemap | trafilatura | css_selectors | playwright | api
+#   enabled             : false (nunca ativar automaticamente)
+#   trust               : 1–5 (1=baixa, 5=altíssima)
+#   notes               : observações editoriais
+#   tags                : lista de tags temáticas
+#   needs_validation    : true se RSS/sitemap ainda não validado
+
+portals:
+
+  # ─── Nacionais ───────────────────────────────────────────────────────────────
+
+  - name: G1
+    base_url: "https://g1.globo.com"
+    rss_url: "https://g1.globo.com/rss/g1/"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 5
+    notes: "Portal mais visitado do Brasil. RSS oficial disponível."
+    tags: [noticias, geral, tv_globo]
+    needs_validation: false
+
+  - name: UOL Notícias
+    base_url: "https://noticias.uol.com.br"
+    rss_url: "https://rss.uol.com.br/feed/noticias.xml"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 4
+    notes: "UOL tem RSS mas pode mudar de endereço."
+    tags: [noticias, geral, uol]
+    needs_validation: true
+
+  - name: Folha de S.Paulo
+    base_url: "https://www.folha.uol.com.br"
+    rss_url: "https://feeds.folha.uol.com.br/emcimadahora/rss091.xml"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 5
+    notes: "Paywall parcial. RSS do 'Em Cima da Hora' é gratuito."
+    tags: [politica, economia, brasil]
+    needs_validation: true
+
+  - name: Estadão
+    base_url: "https://www.estadao.com.br"
+    rss_url: null
+    scope: brasil
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Paywall. Verificar RSS gratuito antes de ativar."
+    tags: [politica, economia, brasil]
+    needs_validation: true
+
+  - name: CNN Brasil
+    base_url: "https://www.cnnbrasil.com.br"
+    rss_url: "https://www.cnnbrasil.com.br/feed/"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 4
+    notes: "RSS WordPress disponível."
+    tags: [noticias, tv, brasil]
+    needs_validation: false
+
+  - name: Poder360
+    base_url: "https://www.poder360.com.br"
+    rss_url: "https://www.poder360.com.br/feed/"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 4
+    notes: "Cobertura política nacional de qualidade."
+    tags: [politica, congresso, brasil]
+    needs_validation: false
+
+  - name: Agência Brasil
+    base_url: "https://agenciabrasil.ebc.com.br"
+    rss_url: "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 5
+    notes: "Agência oficial do governo federal. Conteúdo público."
+    tags: [oficial, governo_federal, brasil]
+    needs_validation: false
+
+  - name: Metrópoles
+    base_url: "https://www.metropoles.com"
+    rss_url: "https://www.metropoles.com/feed/"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 3
+    notes: "Portal popular com cobertura nacional."
+    tags: [noticias, geral, brasil]
+    needs_validation: false
+
+  - name: Congresso em Foco
+    base_url: "https://congressoemfoco.uol.com.br"
+    rss_url: "https://congressoemfoco.uol.com.br/feed/"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 4
+    notes: "Especializado em cobertura do Congresso Nacional."
+    tags: [politica, congresso, brasil]
+    needs_validation: false
+
+  - name: Veja
+    base_url: "https://veja.abril.com.br"
+    rss_url: "https://veja.abril.com.br/feed/"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 4
+    notes: "Revista semanal com atualizações online."
+    tags: [politica, brasil, revista]
+    needs_validation: true
+
+  - name: CartaCapital
+    base_url: "https://www.cartacapital.com.br"
+    rss_url: "https://www.cartacapital.com.br/feed/"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 3
+    notes: "Viés editorial progressista. Coberturas especiais."
+    tags: [politica, brasil, esquerda]
+    needs_validation: true
+
+  - name: Brasil de Fato
+    base_url: "https://www.brasildefato.com.br"
+    rss_url: "https://www.brasildefato.com.br/rss2.xml"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 3
+    notes: "Portal de movimentos sociais."
+    tags: [politica, brasil, movimentos_sociais]
+    needs_validation: true
+
+  - name: Gazeta do Povo
+    base_url: "https://www.gazetadopovo.com.br"
+    rss_url: "https://www.gazetadopovo.com.br/feed/"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 4
+    notes: "Portal paranaense com cobertura nacional. Viés liberal."
+    tags: [politica, economia, brasil]
+    needs_validation: true
+
+  - name: Nexo Jornal
+    base_url: "https://www.nexojornal.com.br"
+    rss_url: null
+    scope: brasil
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Jornalismo explicativo. Paywall. Verificar RSS antes de ativar."
+    tags: [politica, brasil, explicativo]
+    needs_validation: true
+
+  - name: Valor Econômico
+    base_url: "https://valor.globo.com"
+    rss_url: "https://valor.globo.com/rss/home"
+    scope: brasil
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 5
+    notes: "Principal jornal de economia do Brasil. Paywall parcial."
+    tags: [economia, financas, brasil]
+    needs_validation: true
+
+  # ─── Piauí / Teresina ────────────────────────────────────────────────────────
+
+  - name: MeioNews
+    base_url: "https://meionews.com.br"
+    rss_url: null
+    scope: piaui
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 4
+    notes: "Portal piauiense de referência."
+    tags: [piaui, noticias, teresina]
+    needs_validation: true
+
+  - name: Cidade Verde
+    base_url: "https://cidadeverde.com"
+    rss_url: "https://cidadeverde.com/rss.xml"
+    scope: teresina
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 4
+    notes: "Um dos portais mais acessados de Teresina."
+    tags: [teresina, piaui, noticias]
+    needs_validation: true
+
+  - name: GP1
+    base_url: "https://gp1.com.br"
+    rss_url: "https://gp1.com.br/feed/"
+    scope: piaui
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 4
+    notes: "Portal regional com cobertura ampla do Piauí."
+    tags: [piaui, noticias, politica]
+    needs_validation: true
+
+  - name: 180graus
+    base_url: "https://180graus.com"
+    rss_url: "https://180graus.com/rss"
+    scope: piaui
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 3
+    notes: "Portal de entretenimento e notícias do Piauí."
+    tags: [piaui, entretenimento, noticias]
+    needs_validation: true
+
+  - name: Portal O Dia
+    base_url: "https://www.portalodia.com"
+    rss_url: null
+    scope: piaui
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 4
+    notes: "Jornal impresso com versão digital."
+    tags: [piaui, teresina, jornal]
+    needs_validation: true
+
+  - name: Viagora
+    base_url: "https://www.viagora.com.br"
+    rss_url: null
+    scope: teresina
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 3
+    notes: "Portal de notícias de Teresina."
+    tags: [teresina, noticias, geral]
+    needs_validation: true
+
+  - name: Piauí Hoje
+    base_url: "https://piauihoje.com"
+    rss_url: null
+    scope: piaui
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 3
+    notes: "Notícias do Piauí."
+    tags: [piaui, noticias]
+    needs_validation: true
+
+  - name: G1 Piauí
+    base_url: "https://g1.globo.com/pi/"
+    rss_url: "https://g1.globo.com/rss/g1/pi/"
+    scope: piaui
+    source_type: portal
+    strategy_suggested: portal_list
+    enabled: false
+    trust: 5
+    notes: >
+      Versão piauiense do G1 Globo. SSR puro, sem paywall.
+      Estrutura analisada via devtools em 2026-05-29.
+      Usar portal_list com seletores validados abaixo.
+      RSS também disponível como alternativa.
+    tags: [piaui, teresina, tv_globo]
+    needs_validation: false
+    scrape_config:
+      strategy: portal_list
+      list_url: "https://g1.globo.com/pi/piaui/cidade/teresina/"
+      article_link_selector: "a[href*='/noticia/'][href$='.ghtml']"
+      pagination_url_pattern: "https://g1.globo.com/pi/piaui/cidade/teresina/index/feed/pagina-{N}.ghtml"
+      pagination_start: 2
+      pagination_max_pages: 3
+      title_selector: "h1"
+      content_selector: ".content-text"
+      date_selector: "time[datetime]"
+      date_attribute: "datetime"
+      author_selector: ".content-publication-data__from"
+      image_selector: "meta[property='og:image']"
+      image_attribute: "content"
+      requires_js: false
+
+  - name: TV Clube Piauí
+    base_url: "https://g1.globo.com/pi/piaui/"
+    rss_url: null
+    scope: piaui
+    source_type: portal
+    strategy_suggested: rss
+    enabled: false
+    trust: 4
+    notes: "Cobertura da TV Clube (afiliada Globo)."
+    tags: [piaui, tv, teresina]
+    needs_validation: true
+
+  - name: A10+
+    base_url: "https://a10.com.br"
+    rss_url: null
+    scope: piaui
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 3
+    notes: "Portal de entretenimento e jornalismo do Piauí."
+    tags: [piaui, entretenimento, noticias]
+    needs_validation: true
+
+  - name: Portal AZ
+    base_url: "https://www.portalnoticias.com.br"
+    rss_url: null
+    scope: piaui
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 3
+    notes: "Portal de notícias do Piauí — verificar URL correta."
+    tags: [piaui, noticias]
+    needs_validation: true
+
+  - name: Política Dinâmica
+    base_url: "https://www.politicadinamica.com"
+    rss_url: null
+    scope: piaui
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 3
+    notes: "Portal focado em política piauiense."
+    tags: [piaui, politica]
+    needs_validation: true
+
+  - name: Parlamento Piauí
+    base_url: "https://www.parlamentopiaui.com.br"
+    rss_url: null
+    scope: piaui
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 3
+    notes: "Cobertura especializada do legislativo piauiense."
+    tags: [piaui, politica, legislativo]
+    needs_validation: true
+
+  - name: Diário do Povo do Piauí
+    base_url: "https://www.diariodopovo.com.br"
+    rss_url: null
+    scope: piaui
+    source_type: portal
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 3
+    notes: "Jornal impresso com versão digital."
+    tags: [piaui, jornal, noticias]
+    needs_validation: true
+
+  # ─── Fontes Oficiais ─────────────────────────────────────────────────────────
+
+  - name: Governo do Piauí
+    base_url: "https://www.pi.gov.br"
+    rss_url: null
+    scope: piaui
+    source_type: oficial
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Assessoria de imprensa do governo estadual."
+    tags: [piaui, governo_estadual, oficial]
+    needs_validation: true
+
+  - name: Prefeitura de Teresina
+    base_url: "https://www.teresina.pi.gov.br"
+    rss_url: null
+    scope: teresina
+    source_type: oficial
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Assessoria de imprensa da Prefeitura de Teresina."
+    tags: [teresina, prefeitura, oficial]
+    needs_validation: true
+
+  - name: ALEPI
+    base_url: "https://www.alepi.pi.gov.br"
+    rss_url: null
+    scope: piaui
+    source_type: oficial
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Assembleia Legislativa do Piauí."
+    tags: [piaui, legislativo, alepi, oficial]
+    needs_validation: true
+
+  - name: Câmara Municipal de Teresina
+    base_url: "https://www.camarateresina.pi.gov.br"
+    rss_url: null
+    scope: teresina
+    source_type: oficial
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Câmara Municipal de Teresina."
+    tags: [teresina, camara, legislativo, oficial]
+    needs_validation: true
+
+  - name: TCE-PI
+    base_url: "https://www.tce.pi.gov.br"
+    rss_url: null
+    scope: piaui
+    source_type: oficial
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Tribunal de Contas do Estado do Piauí."
+    tags: [piaui, controle, tce, oficial]
+    needs_validation: true
+
+  - name: MPPI
+    base_url: "https://www.mppi.mp.br"
+    rss_url: null
+    scope: piaui
+    source_type: oficial
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Ministério Público do Piauí."
+    tags: [piaui, justica, mp, oficial]
+    needs_validation: true
+
+  - name: TJPI
+    base_url: "https://www.tjpi.jus.br"
+    rss_url: null
+    scope: piaui
+    source_type: oficial
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Tribunal de Justiça do Piauí."
+    tags: [piaui, justica, tjpi, oficial]
+    needs_validation: true
+
+  - name: Diário Oficial do Estado do Piauí
+    base_url: "https://www.diariooficial.pi.gov.br"
+    rss_url: null
+    scope: piaui
+    source_type: oficial
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Publicações oficiais do estado."
+    tags: [piaui, diario_oficial, oficial]
+    needs_validation: true
+
+  - name: Diário Oficial do Município de Teresina
+    base_url: "https://dom.teresina.pi.gov.br"
+    rss_url: null
+    scope: teresina
+    source_type: oficial
+    strategy_suggested: trafilatura
+    enabled: false
+    trust: 5
+    notes: "Publicações oficiais do município."
+    tags: [teresina, diario_oficial, oficial]
+    needs_validation: true
+
+  - name: Câmara dos Deputados
+    base_url: "https://www.camara.leg.br"
+    rss_url: "https://www.camara.leg.br/noticias/rss/"
+    scope: brasil
+    source_type: oficial
+    strategy_suggested: rss
+    enabled: false
+    trust: 5
+    notes: "Notícias oficiais da Câmara dos Deputados."
+    tags: [brasil, legislativo, camara, oficial]
+    needs_validation: false
+
+  - name: Senado Federal
+    base_url: "https://www12.senado.leg.br"
+    rss_url: "https://www12.senado.leg.br/noticias/rss"
+    scope: brasil
+    source_type: oficial
+    strategy_suggested: rss
+    enabled: false
+    trust: 5
+    notes: "Notícias oficiais do Senado Federal."
+    tags: [brasil, legislativo, senado, oficial]
+    needs_validation: false
+
+  - name: Palácio do Planalto
+    base_url: "https://www.gov.br/planalto"
+    rss_url: "https://www.gov.br/planalto/pt-br/noticias/RSS"
+    scope: brasil
+    source_type: oficial
+    strategy_suggested: rss
+    enabled: false
+    trust: 5
+    notes: "Assessoria de imprensa da Presidência da República."
+    tags: [brasil, presidencia, governo_federal, oficial]
+    needs_validation: true
+
+  - name: Portal da Transparência
+    base_url: "https://portaldatransparencia.gov.br"
+    rss_url: null
+    scope: brasil
+    source_type: oficial
+    strategy_suggested: api
+    enabled: false
+    trust: 5
+    notes: "Dados públicos de gastos federais. API disponível."
+    tags: [brasil, transparencia, dados_publicos, oficial]
+    needs_validation: true
+
+  - name: Compras.gov.br
+    base_url: "https://www.compras.gov.br"
+    rss_url: null
+    scope: brasil
+    source_type: oficial
+    strategy_suggested: api
+    enabled: false
+    trust: 5
+    notes: "Portal de licitações federais. API disponível."
+    tags: [brasil, licitacoes, compras_publicas, oficial]
+    needs_validation: true
