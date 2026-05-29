@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f1f5f9;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  #card {
+    width: 600px;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  /* ── Header ──────────────────────────────── */
+  .card-header {
+    background: {{prioridade_cor}};
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .badge-prioridade {
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .badge-editoria {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .badge-ia {
+    background: rgba(255, 255, 255, 0.20);
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+
+  /* ── Body ────────────────────────────────── */
+  .card-body {
+    padding: 18px 20px 14px;
+  }
+
+  .card-titulo {
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.35;
+    margin-bottom: 8px;
+  }
+
+  .card-subtitulo {
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    line-height: 1.4;
+    margin-bottom: 10px;
+    font-style: italic;
+  }
+
+  .card-resumo {
+    font-size: 12.5px;
+    color: #475569;
+    line-height: 1.55;
+    margin-bottom: 12px;
+  }
+
+  /* ── Pontos-chave ────────────────────────── */
+  .card-pontos {
+    margin-bottom: 12px;
+  }
+
+  .card-pontos ul {
+    list-style: none;
+  }
+
+  .card-pontos ul li {
+    font-size: 12px;
+    color: #334155;
+    padding: 3px 0 3px 16px;
+    position: relative;
+    line-height: 1.4;
+  }
+
+  .card-pontos ul li::before {
+    content: "●";
+    position: absolute;
+    left: 0;
+    color: {{prioridade_cor}};
+    font-size: 8px;
+    top: 5px;
+  }
+
+  /* ── Tags ────────────────────────────────── */
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .tag {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+
+  .tag-localidade {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+  }
+
+  .tag-entidade {
+    background: #faf5ff;
+    border-color: #e9d5ff;
+    color: #7c3aed;
+  }
+
+  .tag-categoria {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
+  }
+
+  .tag-generica {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #64748b;
+  }
+
+  /* ── Justificativa ───────────────────────── */
+  .card-justificativa {
+    font-size: 10.5px;
+    color: #94a3b8;
+    font-style: italic;
+    line-height: 1.4;
+    border-left: 2px solid #e2e8f0;
+    padding-left: 10px;
+    margin-bottom: 12px;
+  }
+
+  /* ── Footer ──────────────────────────────── */
+  .card-footer {
+    border-top: 1px solid #f1f5f9;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fafafa;
+  }
+
+  .footer-meta {
+    font-size: 11px;
+    color: #94a3b8;
+  }
+
+  .footer-score {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .score-label {
+    font-size: 10px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .score-bar-bg {
+    width: 72px;
+    height: 5px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .score-bar {
+    height: 100%;
+    background: {{prioridade_cor}};
+    border-radius: 3px;
+    width: calc({{score}} * 1%);
+    max-width: 100%;
+  }
+
+  .score-num {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    min-width: 24px;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+<div id="card">
+
+  <!-- Header com prioridade e editoria -->
+  <div class="card-header">
+    <div class="header-left">
+      <span class="badge-prioridade">{{prioridade}}</span>
+      <span class="badge-editoria">{{editoria}}</span>
+    </div>
+    <span class="badge-ia">{{ia_badge}}</span>
+  </div>
+
+  <!-- Corpo do card -->
+  <div class="card-body">
+
+    <!-- Título principal -->
+    <div class="card-titulo">{{titulo}}</div>
+
+    <!-- Subtítulo (opcional — preencher com subtitulo_sugerido da IA) -->
+    {{subtitulo_html}}
+
+    <!-- Resumo curto -->
+    <div class="card-resumo">{{resumo}}</div>
+
+    <!-- Pontos-chave (lista) -->
+    {{pontos_html}}
+
+    <!-- Tags: localidade, entidades, categoria -->
+    <div class="card-tags">
+      {{localidade_tag}}
+      {{entidades_tags}}
+      {{categoria_tag}}
+    </div>
+
+    <!-- Justificativa do score (opcional) -->
+    {{justificativa_html}}
+
+  </div>
+
+  <!-- Footer com fonte, data e score -->
+  <div class="card-footer">
+    <span class="footer-meta">{{fonte}} · {{data}}</span>
+    <div class="footer-score">
+      <span class="score-label">score</span>
+      <div class="score-bar-bg">
+        <div class="score-bar"></div>
+      </div>
+      <span class="score-num">{{score}}</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
