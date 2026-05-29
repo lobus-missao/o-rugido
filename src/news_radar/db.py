@@ -213,6 +213,8 @@ MIGRATION_SQL = [
     "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ",
     # Fase 7 — caminho do HTML gerado (auditoria do card)
     "ALTER TABLE articles ADD COLUMN IF NOT EXISTS card_html_path TEXT",
+    # Fase 8 — nota do revisor ao aprovar/rejeitar
+    "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS review_notes TEXT",
 ]
 
 

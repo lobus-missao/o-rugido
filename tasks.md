@@ -356,34 +356,48 @@ tests/test_phase7_cards.py        (novo — 47 testes)
 
 ---
 
-## Fase 8 — Aprovação, Publicação e Auditoria
+## Fase 8 — Aprovação, Publicação e Auditoria ✅ Concluída
 
 **Objetivo:** Histórico completo de ações, rastreabilidade total, comentários do revisor.
 
+**Concluída em:** 2026-05-29
+
 ### Tarefas
-- [ ] Implementar registro completo em `editorial_actions`
-- [ ] Dashboard: histórico de ações por artigo
-- [ ] Campo `review_notes` no dispatch
-- [ ] UI para editor adicionar comentário ao aprovar/rejeitar
-- [ ] Página de Auditoria com filtros
-- [ ] Alerta para dispatches sem ação há mais de 2h
+- [x] `_try_update_article_editorial_status()` — helper best-effort para atualizar articles
+- [x] `approve_article()` — agora escreve `articles.editorial_status='approved'` (gap da spec corrigido)
+- [x] Todas as funções (approve_article, reject_article, approve_card, reject_card, mark_published) aceitam `notes` opcional
+- [x] `notes` persiste em `dispatches.review_notes` e em `editorial_actions.notes`
+- [x] `mark_published()` aceita `user` e `notes`, registra `editorial_action("published")`
+- [x] Migration `review_notes TEXT` em `dispatches` (db.py)
+- [x] `dashboard_queries.py`: `article_audit_history()`, `dispatch_audit_history()`, `audit_page_actions()`, `audit_metrics()`
+- [x] `pages/11_Auditoria.py`: página de auditoria com filtros (período, tipo de ação, ator), métricas e busca por artigo
+- [x] `pages/0_Edicoes.py`: campo de nota do revisor por dispatch + expander de histórico de ações
+- [x] `tests/test_phase8_approval.py`: 29 testes (approve, reject, publish, idempotência, notas, auditoria)
+- [x] `tests/test_phase3_integration.py`: atualizado para nova assinatura de `_try_record_editorial_action`
 
-### Riscos
-- Tabela `editorial_actions` pode crescer rápido — adicionar limpeza automática (>90 dias)
-
-### Arquivos Prováveis
+### Arquivos Criados/Modificados
 ```
-src/news_radar/db.py             (tabela editorial_actions)
-src/news_radar/dispatch.py       (registrar em editorial_actions)
-pages/0_Edicoes.py               (review_notes)
-pages/11_Auditoria.py            (nova página)
+src/news_radar/dispatch.py         (helpers e funções com notes, mark_published auditável)
+src/news_radar/db.py               (migration review_notes)
+src/news_radar/dashboard_queries.py (4 funções de auditoria novas)
+pages/0_Edicoes.py                 (campo notes + histórico por dispatch)
+pages/11_Auditoria.py              (nova — página de auditoria editorial)
+tests/test_phase8_approval.py      (novo — 29 testes)
+tests/test_phase3_integration.py   (ajuste de assinatura)
 ```
 
 ### Critérios de Aceite
-- [ ] Toda aprovação/rejeição registrada com ator e timestamp
-- [ ] Histórico de ações visível por artigo
-- [ ] Editor pode adicionar nota ao revisar
-- [ ] Página de auditoria com filtros funcionais
+- [x] Toda aprovação/rejeição registrada com ator e timestamp
+- [x] Histórico de ações visível por artigo (dashboard + query)
+- [x] Editor pode adicionar nota ao revisar (campo no 0_Edicoes.py)
+- [x] Página de auditoria com filtros funcionais (11_Auditoria.py)
+- [x] articles.editorial_status='approved' escrito por approve_article() (gap corrigido)
+- [x] mark_published() registra ação editorial auditável
+- [x] 248 testes passando, 2 skipped
+
+### Notas (decisões de escopo)
+- Alerta para dispatches sem ação há mais de 2h: reservado para Fase 9
+- Limpeza automática de editorial_actions (>90 dias): reservado para Fase 9
 
 ---
 

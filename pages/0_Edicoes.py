@@ -16,6 +16,7 @@ from news_radar.dispatch import (
     regenerate_card, mark_published, create_dispatch, select_top_articles,
 )
 from news_radar.db import connect
+from news_radar.dashboard_queries import dispatch_audit_history
 
 st.set_page_config(page_title="Edições · News Radar", page_icon="📰", layout="wide")
 sidebar_controls()
@@ -170,18 +171,38 @@ for edition_key, edition_info in EDITIONS.items():
                         st.image(card_path, width=280)
 
                 with col_actions:
-                    # Ações por status
+                    # ── Campo de notas de revisão ──────────────────────────
+                    review_notes_key = f"notes_{dispatch_id}"
+                    if status in ("pending_article", "pending_card", "card_approved", "ready_to_publish"):
+                        notes_val = st.text_input(
+                            "Nota do revisor (opcional)",
+                            key=review_notes_key,
+                            placeholder="Observação para auditoria...",
+                            label_visibility="collapsed",
+                        )
+                    else:
+                        notes_val = ""
+
+                    # ── Ações por status ───────────────────────────────────
                     if status == "pending_article":
                         if st.button("✅ Aprovar artigo", key=f"app_art_{dispatch_id}", type="primary"):
                             with st.spinner("Aprovando e gerando card..."):
                                 try:
-                                    approve_article(dispatch_id, "Editor (Dashboard)")
+                                    approve_article(
+                                        dispatch_id,
+                                        "Editor (Dashboard)",
+                                        notes=notes_val or None,
+                                    )
                                     st.success("Artigo aprovado! Card sendo gerado...")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(str(e))
                         if st.button("❌ Rejeitar", key=f"rej_art_{dispatch_id}"):
-                            reject_article(dispatch_id, "Editor (Dashboard)")
+                            reject_article(
+                                dispatch_id,
+                                "Editor (Dashboard)",
+                                notes=notes_val or None,
+                            )
                             st.rerun()
 
                     elif status == "article_approved":
@@ -195,7 +216,11 @@ for edition_key, edition_info in EDITIONS.items():
 
                     elif status == "pending_card":
                         if st.button("✅ Aprovar card", key=f"app_card_{dispatch_id}", type="primary"):
-                            approve_card(dispatch_id, "Editor (Dashboard)")
+                            approve_card(
+                                dispatch_id,
+                                "Editor (Dashboard)",
+                                notes=notes_val or None,
+                            )
                             st.success("Card aprovado! Pronto para publicar.")
                             st.rerun()
                         if st.button("🔄 Regerar card", key=f"regen2_{dispatch_id}"):
@@ -206,13 +231,21 @@ for edition_key, edition_info in EDITIONS.items():
                                 except Exception as e:
                                     st.error(str(e))
                         if st.button("❌ Rejeitar card", key=f"rej_card_{dispatch_id}"):
-                            reject_card(dispatch_id, "Editor (Dashboard)")
+                            reject_card(
+                                dispatch_id,
+                                "Editor (Dashboard)",
+                                notes=notes_val or None,
+                            )
                             st.rerun()
 
                     elif status in ("card_approved", "ready_to_publish"):
                         st.success("✅ Pronto para publicar!")
                         if st.button("📣 Marcar como publicado", key=f"pub_{dispatch_id}", type="primary"):
-                            mark_published(dispatch_id)
+                            mark_published(
+                                dispatch_id,
+                                user="Editor (Dashboard)",
+                                notes=notes_val or None,
+                            )
                             st.rerun()
 
                     elif status == "published":
@@ -220,6 +253,30 @@ for edition_key, edition_info in EDITIONS.items():
 
                     elif status in ("article_rejected", "card_rejected"):
                         st.error(f"{'Artigo' if 'article' in status else 'Card'} rejeitado.")
+
+                    # ── Histórico de ações por dispatch ────────────────────
+                    if dispatch_id:
+                        with st.expander("📋 Histórico de ações", expanded=False):
+                            try:
+                                history = dispatch_audit_history(dispatch_id, limit=10)
+                            except Exception:
+                                history = []
+                            if history:
+                                for ev in history:
+                                    ev_action = ev.get("action") or ""
+                                    ev_actor = ev.get("actor") or "sistema"
+                                    ev_ts = fmt_dt(ev.get("created_at"), 16)
+                                    ev_notes = ev.get("notes") or ""
+                                    from_s = ev.get("from_status") or ""
+                                    to_s = ev.get("to_status") or ""
+                                    line = f"`{ev_ts}` **{ev_action}** por {ev_actor}"
+                                    if from_s or to_s:
+                                        line += f" · `{from_s}` → `{to_s}`"
+                                    st.caption(line)
+                                    if ev_notes:
+                                        st.caption(f"  💬 {ev_notes}")
+                            else:
+                                st.caption("Nenhuma ação registrada ainda.")
 
             st.divider()
 

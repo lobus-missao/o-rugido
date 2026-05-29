@@ -747,3 +747,141 @@ def recent_editorial_actions(limit: int = 10) -> list[dict]:
                 return [dict(r) for r in cur.fetchall()]
     except Exception:
         return []
+
+
+# ── Auditoria detalhada (Fase 8) ──────────────────────────────────────────────
+
+def article_audit_history(article_id: str, limit: int = 50) -> list[dict]:
+    """Histórico completo de ações para um artigo específico."""
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT ea.id, ea.action, ea.actor, ea.from_status, ea.to_status,
+                           ea.notes, ea.metadata, ea.created_at,
+                           ea.dispatch_id
+                    FROM editorial_actions ea
+                    WHERE ea.article_id = %s
+                    ORDER BY ea.created_at DESC
+                    LIMIT %s
+                    """,
+                    (article_id, limit),
+                )
+                return [dict(r) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
+def dispatch_audit_history(dispatch_id: int, limit: int = 20) -> list[dict]:
+    """Histórico de ações registradas para um dispatch específico."""
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT ea.id, ea.action, ea.actor, ea.from_status, ea.to_status,
+                           ea.notes, ea.created_at, ea.article_id,
+                           a.title AS article_title
+                    FROM editorial_actions ea
+                    LEFT JOIN articles a ON ea.article_id = a.id
+                    WHERE ea.dispatch_id = %s
+                    ORDER BY ea.created_at ASC
+                    LIMIT %s
+                    """,
+                    (dispatch_id, limit),
+                )
+                return [dict(r) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
+def audit_page_actions(
+    days_back: int = 7,
+    action_filter: str | None = None,
+    actor_filter: str | None = None,
+    limit: int = 200,
+) -> list[dict]:
+    """Lista ações editoriais para a página de auditoria, com filtros opcionais."""
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
+        conditions = ["ea.created_at >= %s"]
+        params: list[Any] = [cutoff]
+
+        if action_filter:
+            conditions.append("ea.action = %s")
+            params.append(action_filter)
+        if actor_filter:
+            conditions.append("ea.actor ILIKE %s")
+            params.append(f"%{actor_filter}%")
+
+        where = "WHERE " + " AND ".join(conditions)
+        params.append(limit)
+
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    SELECT ea.id, ea.article_id, ea.dispatch_id, ea.action, ea.actor,
+                           ea.from_status, ea.to_status, ea.notes, ea.created_at,
+                           a.title AS article_title,
+                           a.source AS article_source,
+                           a.priority AS article_priority
+                    FROM editorial_actions ea
+                    LEFT JOIN articles a ON ea.article_id = a.id
+                    {where}
+                    ORDER BY ea.created_at DESC
+                    LIMIT %s
+                    """,
+                    params,
+                )
+                return [dict(r) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
+def audit_metrics(days_back: int = 7) -> dict:
+    """Métricas de auditoria: totais por tipo de ação e por ator."""
+    empty: dict = {"total": 0, "by_action": {}, "by_actor": {}, "approvals": 0, "rejections": 0}
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT action, COUNT(*) n
+                    FROM editorial_actions
+                    WHERE created_at >= %s
+                    GROUP BY action
+                    ORDER BY n DESC
+                    """,
+                    (cutoff,),
+                )
+                by_action = {r["action"]: r["n"] for r in cur.fetchall()}
+
+                cur.execute(
+                    """
+                    SELECT actor, COUNT(*) n
+                    FROM editorial_actions
+                    WHERE created_at >= %s
+                    GROUP BY actor
+                    ORDER BY n DESC
+                    LIMIT 10
+                    """,
+                    (cutoff,),
+                )
+                by_actor = {r["actor"]: r["n"] for r in cur.fetchall()}
+
+        total = sum(by_action.values())
+        approvals = by_action.get("approve_article", 0) + by_action.get("approve_card", 0)
+        rejections = by_action.get("reject_article", 0) + by_action.get("reject_card", 0)
+
+        return {
+            "total": total,
+            "by_action": by_action,
+            "by_actor": by_actor,
+            "approvals": approvals,
+            "rejections": rejections,
+        }
+    except Exception:
+        return empty

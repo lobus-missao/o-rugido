@@ -57,6 +57,7 @@ def _try_record_editorial_action(
     dispatch_id: int | None = None,
     from_status: str | None = None,
     to_status: str | None = None,
+    notes: str | None = None,
 ) -> None:
     """Registra ação editorial (best-effort). Não quebra o fluxo se a tabela não existir."""
     try:
@@ -68,12 +69,31 @@ def _try_record_editorial_action(
             dispatch_id=dispatch_id,
             from_status=from_status,
             to_status=to_status,
+            notes=notes,
         )
     except Exception as exc:
         _logger.warning(
             "Falha ao registrar ação editorial '%s' (dispatch=%s): %s",
             action,
             dispatch_id,
+            str(exc)[:120],
+        )
+
+
+def _try_update_article_editorial_status(article_id: str, status: str) -> None:
+    """Atualiza editorial_status do artigo (best-effort). Não quebra o fluxo em caso de falha."""
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE articles SET editorial_status=%s, updated_at=NOW() WHERE id=%s",
+                    (status, article_id),
+                )
+    except Exception as exc:
+        _logger.warning(
+            "Falha ao atualizar editorial_status='%s' para article_id=%s: %s",
+            status,
+            article_id,
             str(exc)[:120],
         )
 
@@ -284,6 +304,7 @@ def approve_article(
     *,
     generate_card: bool = True,
     dry_run: bool | None = None,
+    notes: str | None = None,
 ) -> dict:
     """Editor aprovou o artigo. Por compatibilidade, gera o card por padrão."""
     dispatch = get_dispatch(dispatch_id)
@@ -294,12 +315,18 @@ def approve_article(
     if dispatch["status"] not in ("pending_article",):
         return {"ok": True, "skipped": True, "dispatch_id": dispatch_id, "status": dispatch["status"]}
 
-    update_dispatch(
-        dispatch_id,
+    update_kwargs: dict = dict(
         status="article_approved",
         article_reviewed_by=user,
         article_reviewed_at=utc_now(),
     )
+    if notes:
+        update_kwargs["review_notes"] = notes
+    update_dispatch(dispatch_id, **update_kwargs)
+
+    # Fase 8 — escreve editorial_status='approved' no artigo (gap corrigido)
+    _try_update_article_editorial_status(dispatch["article_id"], "approved")
+
     _try_record_editorial_action(
         action="approve_article",
         actor=user,
@@ -307,6 +334,7 @@ def approve_article(
         dispatch_id=dispatch_id,
         from_status="pending_article",
         to_status="article_approved",
+        notes=notes,
     )
 
     # Edita a mensagem original em-lugar mostrando aprovação
@@ -368,7 +396,7 @@ def generate_card_for_dispatch(
         return {"ok": False, "dispatch_id": dispatch_id, "status": dispatch["status"], "error": error_msg}
 
 
-def reject_article(dispatch_id: int, user: str = "Editor") -> dict:
+def reject_article(dispatch_id: int, user: str = "Editor", notes: str | None = None) -> dict:
     dispatch = get_dispatch(dispatch_id)
     if not dispatch:
         return {"ok": False, "error": "dispatch nao encontrado", "dispatch_id": dispatch_id}
@@ -377,12 +405,15 @@ def reject_article(dispatch_id: int, user: str = "Editor") -> dict:
     if dispatch["status"] not in ("pending_article",):
         return {"ok": True, "skipped": True, "dispatch_id": dispatch_id, "status": dispatch["status"]}
 
-    update_dispatch(
-        dispatch_id,
+    update_kwargs: dict = dict(
         status="article_rejected",
         article_reviewed_by=user,
         article_reviewed_at=utc_now(),
     )
+    if notes:
+        update_kwargs["review_notes"] = notes
+    update_dispatch(dispatch_id, **update_kwargs)
+
     _try_record_editorial_action(
         action="reject_article",
         actor=user,
@@ -390,6 +421,7 @@ def reject_article(dispatch_id: int, user: str = "Editor") -> dict:
         dispatch_id=dispatch_id,
         from_status="pending_article",
         to_status="article_rejected",
+        notes=notes,
     )
     _edit_article_message(
         dispatch.get("article_tg_message_id"),
@@ -425,7 +457,7 @@ def _send_card_for_approval(
     update_dispatch(dispatch_id, card_tg_message_id=msg_id)
 
 
-def approve_card(dispatch_id: int, user: str = "Editor") -> dict:
+def approve_card(dispatch_id: int, user: str = "Editor", notes: str | None = None) -> dict:
     dispatch = get_dispatch(dispatch_id)
     if not dispatch:
         return {"ok": False, "error": "dispatch nao encontrado", "dispatch_id": dispatch_id}
@@ -433,13 +465,16 @@ def approve_card(dispatch_id: int, user: str = "Editor") -> dict:
         return {"ok": True, "skipped": True, "dispatch_id": dispatch_id, "status": dispatch["status"]}
 
     now = utc_now()
-    update_dispatch(
-        dispatch_id,
+    update_kwargs: dict = dict(
         status="ready_to_publish",
         card_reviewed_by=user,
         card_reviewed_at=now,
         ready_at=now,
     )
+    if notes:
+        update_kwargs["review_notes"] = notes
+    update_dispatch(dispatch_id, **update_kwargs)
+
     _try_record_editorial_action(
         action="approve_card",
         actor=user,
@@ -447,6 +482,7 @@ def approve_card(dispatch_id: int, user: str = "Editor") -> dict:
         dispatch_id=dispatch_id,
         from_status="pending_card",
         to_status="ready_to_publish",
+        notes=notes,
     )
     _edit_caption_remove_buttons(
         dispatch.get("card_tg_message_id"),
@@ -462,17 +498,20 @@ def approve_card(dispatch_id: int, user: str = "Editor") -> dict:
     return {"ok": True, "dispatch_id": dispatch_id, "status": "ready_to_publish"}
 
 
-def reject_card(dispatch_id: int, user: str = "Editor") -> dict:
+def reject_card(dispatch_id: int, user: str = "Editor", notes: str | None = None) -> dict:
     dispatch = get_dispatch(dispatch_id)
     if not dispatch:
         return {"ok": False, "error": "dispatch nao encontrado", "dispatch_id": dispatch_id}
 
-    update_dispatch(
-        dispatch_id,
+    update_kwargs: dict = dict(
         status="card_rejected",
         card_reviewed_by=user,
         card_reviewed_at=utc_now(),
     )
+    if notes:
+        update_kwargs["review_notes"] = notes
+    update_dispatch(dispatch_id, **update_kwargs)
+
     _try_record_editorial_action(
         action="reject_card",
         actor=user,
@@ -480,6 +519,7 @@ def reject_card(dispatch_id: int, user: str = "Editor") -> dict:
         dispatch_id=dispatch_id,
         from_status="pending_card",
         to_status="card_rejected",
+        notes=notes,
     )
     _edit_caption_remove_buttons(
         dispatch.get("card_tg_message_id"),
@@ -508,16 +548,33 @@ def regenerate_card(dispatch_id: int, user: str = "Editor") -> dict:
     return result
 
 
-def mark_published(dispatch_id: int) -> None:
+def mark_published(
+    dispatch_id: int,
+    user: str = "Editor",
+    notes: str | None = None,
+) -> None:
     dispatch = get_dispatch(dispatch_id)
     if dispatch:
-        update_dispatch(dispatch_id, status="published")
+        update_kwargs: dict = dict(status="published")
+        if notes:
+            update_kwargs["review_notes"] = notes
+        update_dispatch(dispatch_id, **update_kwargs)
+
         with connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE articles SET editorial_status='published', updated_at=NOW() WHERE id=%s",
-                    (dispatch["article_id"],)
+                    (dispatch["article_id"],),
                 )
+        _try_record_editorial_action(
+            action="published",
+            actor=user,
+            article_id=dispatch.get("article_id"),
+            dispatch_id=dispatch_id,
+            from_status=dispatch.get("status"),
+            to_status="published",
+            notes=notes,
+        )
 
 
 def handle_callback_action(action: str, payload: str, user: str = "Editor") -> dict:

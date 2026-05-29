@@ -196,6 +196,7 @@ def test_try_record_editorial_action_chama_record(monkeypatch):
             dispatch_id=5,
             from_status="pending_article",
             to_status="article_approved",
+            notes=None,
         )
 
 
