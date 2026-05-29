@@ -183,31 +183,42 @@ tests/test_phase3_integration.py   (novo — 13 testes)
 
 ---
 
-## Fase 4 — IA Assistida com Prompt / Importação JSON
+## Fase 4 — IA Assistida com Prompt / Importação JSON ✅ Concluída
 
-**Objetivo:** Melhorar experiência do fluxo de IA manual.
+**Objetivo:** Fortalecer fluxo manual de IA: validação de campos, auditoria, UX aprimorada.
+
+**Concluída em:** 2026-05-29
 
 ### Tarefas
-- [ ] Botão de cópia do prompt (1 clique)
-- [ ] Exibir métricas do lote antes de gerar (tokens, palavras, artigos)
-- [ ] Permitir reimportação de lote já concluído
-- [ ] Adicionar validação de schema por campo no `import_ai_result_detailed()`
-- [ ] Adicionar campo `titulo_sugerido` e `subtitulo_sugerido` ao display de artigo
+- [x] Copiar prompt via `st.code()` com botão nativo do Streamlit
+- [x] Exibir métricas do lote (tokens estimados, palavras, artigos)
+- [x] Reimportação de lote já concluído com validação
+- [x] `validate_ai_item()` — valida id, campos obrigatórios, range 0-10, prioridade enum
+- [x] `validate_ai_response()` — valida JSON, ID match, item_errors por amostragem
+- [x] `import_ai_result_detailed()` recebe `actor=` e chama `record_editorial_action()`
+- [x] `ai_batch_prompt_template.txt` atualizado com todos os campos da Fase 4 (gravidade, risco_investigativo, polemica, confiabilidade, titulo_sugerido, subtitulo_sugerido, tags + scoring criteria)
+- [x] `pages/2_Lotes_IA.py` usa `validate_ai_response()` — feedback de erros de campos
+- [x] Log de importação mostra justificativa_score por artigo
+- [x] `tests/test_phase4_ai.py` — 37 testes (item, response, import, constantes)
 
-### Riscos
-- Não quebrar fluxo de importação atual (funcional em produção)
-
-### Arquivos Prováveis
+### Arquivos Criados/Modificados
 ```
-pages/2_Lotes_IA.py         (UI melhorias)
-src/news_radar/ai_batches.py (validação adicional)
+prompts/ai_batch_prompt_template.txt  (todos os campos do prompt — reescrito)
+src/news_radar/ai_batches.py          (validate_ai_item, validate_ai_response, actor em import)
+pages/2_Lotes_IA.py                   (validate_ai_response, st.code, métricas, reimport)
+tests/test_phase4_ai.py               (novo — 37 testes)
 ```
 
 ### Critérios de Aceite
-- [ ] Prompt copiado com 1 clique
-- [ ] Métricas de lote visíveis
-- [ ] Reimportação possível
-- [ ] Campos sugeridos exibidos no card/artigo
+- [x] Prompt copiado com 1 clique (st.code com botão nativo)
+- [x] Métricas de lote visíveis (tokens, palavras)
+- [x] Reimportação de lote concluído possível
+- [x] JSON inválido mostra erro amigável e não importa nada
+- [x] ID fora do lote exibe aviso e bloqueia importação < 40%
+- [x] Campos fora do range 0-10 reportados como item_errors
+- [x] Prioridade inválida reportada como item_error
+- [x] Importação registra ação editorial em editorial_actions
+- [x] 105 testes passando, 2 skipped
 
 ---
 

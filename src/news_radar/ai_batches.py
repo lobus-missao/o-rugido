@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from datetime import datetime
 from pathlib import Path
@@ -12,12 +13,161 @@ from .ranker import ai_score_from_payload, combine_with_ai
 from .repository import SCORE_COLUMN, top_articles
 from .text_utils import normalize_spaces
 
+_logger = logging.getLogger(__name__)
+
 DEFAULT_MIN_BATCH_TOKENS = 32_000
 DEFAULT_TARGET_BATCH_TOKENS = 96_000
 DEFAULT_MAX_BATCH_TOKENS = 128_000
 DEFAULT_MAX_BATCH_CHARS = 400_000
 DEFAULT_MAX_BATCH_WORDS = 96_000
 DEFAULT_BATCH_ITEMS = 100
+
+# ── Validação de resposta da IA ───────────────────────────────────────────────
+
+VALID_PRIORIDADE = {"ruido", "baixa", "media", "alta", "critica"}
+
+NUMERIC_FIELDS = [
+    "interesse_publico",
+    "impacto_social",
+    "gravidade",
+    "risco_investigativo",
+    "dinheiro_publico",
+    "relevancia_politica",
+    "polemica",
+    "urgencia",
+    "relevancia_local",
+    "confiabilidade",
+]
+
+REQUIRED_FIELDS = [
+    "id",
+    "editoria",
+    "prioridade",
+    "interesse_publico",
+    "impacto_social",
+    "urgencia",
+    "relevancia_local",
+    "dinheiro_publico",
+    "resumo_curto",
+    "justificativa_score",
+]
+
+
+def validate_ai_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Valida campos de um único item da resposta da IA.
+
+    Retorna {'ok': bool, 'errors': list[str]}.
+    Verifica: id presente, campos obrigatórios, numéricos em 0-10, prioridade válida.
+    """
+    errors: list[str] = []
+
+    if not isinstance(item, dict):
+        return {"ok": False, "errors": ["item não é um objeto JSON"]}
+
+    if not item.get("id"):
+        errors.append("campo 'id' ausente ou vazio")
+
+    for field in REQUIRED_FIELDS:
+        if field not in item:
+            errors.append(f"campo obrigatório ausente: '{field}'")
+
+    for field in NUMERIC_FIELDS:
+        val = item.get(field)
+        if val is None:
+            continue
+        try:
+            n = float(val)
+            if not (0 <= n <= 10):
+                errors.append(f"'{field}' fora do intervalo 0-10: {val}")
+        except (TypeError, ValueError):
+            errors.append(f"'{field}' deve ser numérico, recebeu: {val!r}")
+
+    prioridade = item.get("prioridade")
+    if prioridade is not None and prioridade not in VALID_PRIORIDADE:
+        errors.append(
+            f"'prioridade' inválida: {prioridade!r}. "
+            f"Válidos: {sorted(VALID_PRIORIDADE)}"
+        )
+
+    return {"ok": len(errors) == 0, "errors": errors}
+
+
+def validate_ai_response(
+    content: str,
+    expected_ids: set[str],
+) -> dict[str, Any]:
+    """Valida resposta JSON da IA.
+
+    Retorna dict com:
+      ok, error (se falhou), data (lista parseada), total_result,
+      total_expected, matched, match_pct, wrong_batch, can_import,
+      item_errors (lista de problemas em campos individuais).
+    """
+    # Strip markdown code block se presente
+    text = content.strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+
+    # Tenta parsear JSON
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        return {
+            "ok": False,
+            "error": f"JSON inválido: {exc}",
+            "data": None,
+            "can_import": False,
+        }
+
+    # Normaliza wrapper de dict
+    if isinstance(data, dict):
+        data = data.get("items") or data.get("result") or data.get("noticias") or []
+
+    if not isinstance(data, list) or not data:
+        return {
+            "ok": False,
+            "error": "Resposta deve ser uma lista JSON não vazia",
+            "data": None,
+            "can_import": False,
+        }
+
+    # Correspondência de IDs
+    result_ids = {
+        str(item.get("id", ""))
+        for item in data
+        if isinstance(item, dict) and item.get("id")
+    }
+    matched = result_ids & expected_ids
+    match_pct = round(len(matched) / len(expected_ids) * 100) if expected_ids else 0
+    wrong_batch = bool(result_ids) and len(result_ids - expected_ids) > len(matched)
+
+    # Validação de campos nos primeiros itens (amostra para feedback rápido)
+    item_errors: list[str] = []
+    for i, item in enumerate(data[:10]):
+        if not isinstance(item, dict):
+            item_errors.append(f"item {i + 1}: não é um objeto JSON")
+            continue
+        val = validate_ai_item(item)
+        if not val["ok"]:
+            prefix = f"item {i + 1} ({str(item.get('id', '?'))[:16]})"
+            item_errors.extend(f"{prefix}: {e}" for e in val["errors"])
+
+    can_import = match_pct >= 40 and not wrong_batch
+
+    return {
+        "ok": True,
+        "error": None,
+        "data": data,
+        "total_result": len(data),
+        "total_expected": len(expected_ids),
+        "matched": len(matched),
+        "match_pct": match_pct,
+        "wrong_batch": wrong_batch,
+        "can_import": can_import,
+        "item_errors": item_errors,
+    }
 
 
 def compact_article(article: dict[str, Any]) -> dict[str, Any]:
@@ -379,8 +529,13 @@ def import_ai_result(path: str | Path, batch_id: str | None = None) -> dict[str,
 def import_ai_result_detailed(
     path: str | Path,
     batch_id: str | None = None,
+    actor: str = "system",
 ) -> dict[str, Any]:
-    """Igual a import_ai_result mas retorna log detalhado por artigo."""
+    """Igual a import_ai_result mas retorna log detalhado por artigo.
+
+    Após importação bem-sucedida, registra ação em editorial_actions.
+    actor: identificador do usuário que disparou a importação.
+    """
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Arquivo nao encontrado: {path}")
@@ -510,6 +665,29 @@ def import_ai_result_detailed(
             error=None,
             completed=True,
         )
+
+    # Registra ação editorial de importação de IA (best-effort)
+    if updated > 0:
+        try:
+            from .editorial import record_editorial_action
+            record_editorial_action(
+                action="ai_import",
+                actor=actor,
+                notes=(
+                    f"{updated} artigo(s) atualizados, {ignored} ignorados"
+                    + (f" — lote: {batch_id}" if batch_id else "")
+                ),
+                metadata={
+                    "batch_id": batch_id,
+                    "updated": updated,
+                    "ignored": ignored,
+                    "result_file": str(path),
+                },
+            )
+        except Exception as exc:
+            _logger.warning(
+                "Falha ao registrar ação editorial de importação IA: %s", str(exc)[:120]
+            )
 
     return {
         "updated": updated,

@@ -6,33 +6,73 @@ Regras obrigatorias:
 - Nao mencione cookies, sessoes, credenciais, arquivos locais ou contexto do sistema.
 - Nao use markdown.
 - Devolva apenas JSON valido, sem texto antes ou depois.
-- Se algum campo nao puder ser inferido pelo texto, use valor neutro ou lista vazia.
+- Se algum campo nao puder ser inferido pelo texto, use valor neutro (0 para numeros, lista vazia para listas, string vazia para textos).
 
 Objetivo:
 - Ajudar um sistema jornalistico piauiense que ranqueia noticias para redatores.
 - Organizar cada noticia em uma editoria util para exibicao.
 - Destacar informacoes praticas para painel e triagem editorial.
 
-Para cada noticia, devolva:
-- id (mesmo id recebido, nao altere)
-- editoria: "Governos e politica", "Contas publicas", "Justica e controle", "Saude", "Educacao", "Seguranca", "Infraestrutura", "Cidades", "Economia", "Esporte", "Cultura", "Outros"
-- categoria: classificacao curta e objetiva
-- localidade: cidade ou estado mencionado, ou "Nacional"
-- entidades: lista de orgaos, pessoas e instituicoes citadas
-- interesse_publico: 0 a 10
-- impacto_social: 0 a 10
-- urgencia: 0 a 10
-- relevancia_local: 0 a 10
-- dinheiro_publico: 0 a 10
-- prioridade: "ruido", "baixa", "media", "alta" ou "critica"
-- resumo_curto: uma frase objetiva de ate 120 caracteres
-- pontos_chave: lista de 2 a 4 pontos concretos e factuais
-- justificativa_score: frase curta explicando a prioridade atribuida
+Para cada noticia, devolva um objeto JSON com os seguintes campos:
 
-Criterios gerais:
-- Interesse publico sobe quando envolve governo, servicos publicos, direitos, fiscalizacao, politica administrativa, contratos, obras ou decisoes que afetam a populacao.
-- Impacto social sobe quando afeta diretamente saude, educacao, transporte, seguranca, moradia, renda, agua, energia ou mobilidade.
-- Urgencia sobe quando ha fato novo, crise, denuncia relevante, interrupcao de servico, risco coletivo ou decisao imediata.
-- Relevancia local sobe quando a noticia tem efeito claro em Piaui, Teresina ou municipios piauienses.
-- Dinheiro publico sobe quando ha contrato, licitacao, verba, repasse, obra, gasto, orcamento ou orgao de controle.
-- Noticias de esporte, celebridades e entretenimento vao para prioridade ruido ou baixa, exceto se houver forte interesse publico.
+- id: o mesmo id recebido, nao altere nunca
+- editoria: classifique em uma destas opcoes: "Governos e politica", "Contas publicas", "Justica e controle", "Saude", "Educacao", "Seguranca", "Infraestrutura", "Cidades", "Economia", "Esporte", "Cultura", "Outros"
+- categoria: classificacao curta e objetiva (ex: "Licitacao municipal", "Operacao policial", "Crise hospitalar")
+- localidade: cidade, estado ou regiao mencionada. Use "Nacional" se for de alcance federal. Use "Internacional" se for externo.
+- entidades: lista de orgaos publicos, pessoas politicas, empresas e instituicoes citadas
+- interesse_publico: numero de 0 a 10 — quanto a noticia afeta a vida dos cidadaos
+- impacto_social: numero de 0 a 10 — quanto afeta servicos como saude, educacao, transporte
+- gravidade: numero de 0 a 10 — severidade do fato (crime, crise, risco coletivo)
+- risco_investigativo: numero de 0 a 10 — potencial de irregularidade, desvio, investigacao
+- dinheiro_publico: numero de 0 a 10 — envolve contrato, licitacao, verba, obra, desvio
+- relevancia_politica: numero de 0 a 10 — envolve mandatarios, partidos, eleicoes
+- polemica: numero de 0 a 10 — gera debate, polarizacao ou repercussao publica
+- urgencia: numero de 0 a 10 — fato novo, crise imediata, decisao urgente
+- relevancia_local: numero de 0 a 10 — impacto direto em Piaui, Teresina ou municipios piauienses
+- confiabilidade: numero de 0 a 10 — credibilidade da fonte e verificabilidade do fato
+- prioridade: classifique em uma destas opcoes: "ruido", "baixa", "media", "alta", "critica"
+- resumo_curto: uma frase objetiva de ate 120 caracteres descrevendo o fato central
+- titulo_sugerido: titulo editorial de ate 80 caracteres, direto e impactante
+- subtitulo_sugerido: subtitulo editorial de ate 120 caracteres com contexto adicional
+- pontos_chave: lista de 2 a 4 pontos concretos, objetivos e factuais
+- tags: lista de 3 a 6 palavras-chave editoriais para indexacao
+- justificativa_score: uma frase curta explicando a prioridade atribuida
+
+Criterios gerais de pontuacao:
+
+interesse_publico sobe quando:
+- Envolve governo, servicos publicos, direitos, fiscalizacao
+- Envolve politica administrativa, contratos, obras, decisoes que afetam a populacao
+
+impacto_social sobe quando:
+- Afeta diretamente saude, educacao, transporte, seguranca, moradia, renda, agua, energia
+
+gravidade sobe quando:
+- Ha crime grave, crise institucional, risco coletivo, violacao de direitos fundamentais
+
+risco_investigativo sobe quando:
+- Ha suspeita de fraude, desvio, corrupcao, irregularidade em contratos ou conduta publica
+
+urgencia sobe quando:
+- Ha fato novo, crise, denuncia relevante, interrupcao de servico, risco coletivo, decisao imediata
+
+relevancia_local sobe quando:
+- A noticia tem efeito claro em Piaui, Teresina ou municipios piauienses
+
+dinheiro_publico sobe quando:
+- Ha contrato, licitacao, verba, repasse, obra, gasto, orcamento ou orgao de controle
+
+polemica sobe quando:
+- Assunto gera debate publico intenso, polarizacao politica ou forte repercussao nas redes
+
+confiabilidade sobe quando:
+- A fonte e reconhecida, o fato e verificavel por multiplas fontes ou por orgaos oficiais
+
+Noticias de esporte, celebridades e entretenimento vao para prioridade "ruido" ou "baixa",
+exceto se houver forte interesse publico (escandalo, desvio de verba publica, investigacao).
+
+Devolva a resposta como uma lista JSON valida:
+[
+  { "id": "...", "editoria": "...", "prioridade": "...", ... },
+  { "id": "...", "editoria": "...", "prioridade": "...", ... }
+]
