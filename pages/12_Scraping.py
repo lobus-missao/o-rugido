@@ -13,17 +13,23 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
 import pandas as pd
 import streamlit as st
-from news_radar.dash_utils import sidebar_controls, fmt_dt
-from news_radar.dashboard_queries import scraping_overview, scraping_recent_runs
+from news_radar.dash_utils import sidebar_controls, fmt_dt, run_cli
+from news_radar.dashboard_queries import (
+    scraping_overview,
+    scraping_recent_runs,
+    ingestion_overview,
+    ingestion_recent_results,
+)
 
 st.set_page_config(page_title="Scraping · News Radar", page_icon="🕷️", layout="wide")
 sidebar_controls()
 st.title("🕷️ Scraping")
 
-tab1, tab2, tab3 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "📊 Visão Geral",
     "▶ Execuções",
     "🏗️ Portais Codificados",
+    "🔄 Ingestão → Articles",
 ])
 
 
@@ -599,10 +605,154 @@ with tab3:
                 col_rk1, col_rk2 = st.columns([3, 1])
                 with col_rk2:
                     if st.button("📊 Recalcular ranking", use_container_width=True, key="btn_rank"):
-                        from news_radar.dash_utils import run_cli
                         with st.spinner("Ranqueando…"):
                             r = run_cli("rank", timeout=120)
                         if r["ok"]:
                             st.success(str(r.get("output", "Ranking recalculado.")))
                         else:
                             st.error(str(r.get("error", "Erro")))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ABA 4 — Ingestão → Articles (Fase 10.2)
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab4:
+    st.subheader("🔄 Ingestão: scraped_pages → articles")
+    st.caption(
+        "Transforma páginas extraídas com sucesso em artigos do pipeline editorial. "
+        "Usa a mesma deduplicação e scoring automático do RSS."
+    )
+
+    # ── Métricas de estado ────────────────────────────────────────────────────
+    try:
+        ing_ov = ingestion_overview()
+    except Exception as _exc:
+        st.error(f"Erro ao carregar métricas: {_exc}")
+        ing_ov = {}
+
+    ic1, ic2, ic3, ic4, ic5 = st.columns(5)
+    ic1.metric("Total scraped_pages", ing_ov.get("pages_total", 0))
+    ic2.metric("🟡 Elegíveis", ing_ov.get("pages_pending", 0),
+               help="extraction_status=ok, ingestion_status=pending, com título e URL")
+    ic3.metric("✅ Ingeridas", ing_ov.get("pages_ingested", 0))
+    ic4.metric("❌ Com erro", ing_ov.get("pages_error", 0))
+    ic5.metric("📰 Artigos do scraping", ing_ov.get("articles_from_scraping", 0))
+
+    st.divider()
+
+    # ── Controles de ingestão ─────────────────────────────────────────────────
+    st.markdown("**Parâmetros**")
+    col_p1, col_p2, col_p3 = st.columns(3)
+    with col_p1:
+        ing_limit = st.number_input(
+            "Limite de páginas", min_value=1, max_value=500, value=50, step=10,
+            key="ing_limit",
+            help="Máximo de páginas a ingerir nesta execução",
+        )
+    with col_p2:
+        ing_dry_run = st.checkbox(
+            "Dry-run (simular sem persistir)", value=True, key="ing_dry_run",
+            help="Mostra o que seria ingerido sem alterar o banco",
+        )
+    with col_p3:
+        n_eligible = ing_ov.get("pages_pending", 0)
+        st.metric(
+            "Páginas elegíveis",
+            n_eligible,
+            help="Páginas que atendem todos os critérios para ingestão",
+        )
+
+    st.divider()
+
+    # ── Botão principal ───────────────────────────────────────────────────────
+    btn_label = f"{'🔍 Simular ingestão' if ing_dry_run else '🚀 Ingerir páginas'} ({min(int(ing_limit), n_eligible)} páginas)"
+    col_b1, col_b2 = st.columns([3, 1])
+    with col_b2:
+        btn_ingest = st.button(
+            btn_label,
+            type="primary",
+            use_container_width=True,
+            key="btn_ingest",
+            disabled=n_eligible == 0,
+            help="Executa a ingestão das páginas elegíveis" if not ing_dry_run
+                 else "Simula sem persistir — seguro para testar",
+        )
+
+    if n_eligible == 0 and not st.session_state.get("ing_last_result"):
+        st.info("Nenhuma página elegível. Extraia artigos na aba 'Portais Codificados' e use 'Inserir no banco'.")
+
+    if btn_ingest:
+        mode_label = "dry-run" if ing_dry_run else "real"
+        with st.spinner(f"Ingerindo ({mode_label})…"):
+            result = run_cli(
+                "ingest-scraping",
+                "--limit", str(int(ing_limit)),
+                *(["--dry-run"] if ing_dry_run else []),
+                timeout=180,
+            )
+        st.session_state["ing_last_result"] = result
+
+    # ── Resultado ─────────────────────────────────────────────────────────────
+    if st.session_state.get("ing_last_result"):
+        res = st.session_state["ing_last_result"]
+        if not res.get("ok"):
+            st.error(f"Erro na ingestão: {res.get('error', 'desconhecido')}")
+        else:
+            import json as _json
+            data = res if isinstance(res, dict) else {}
+            dry = data.get("dry_run", False)
+            prefix = "🔍 Simulação" if dry else "✅ Ingestão"
+            st.success(f"{prefix} concluída")
+
+            rm1, rm2, rm3, rm4, rm5 = st.columns(5)
+            rm1.metric("Elegíveis processadas", data.get("eligible", 0))
+            rm2.metric("Inseridas" + (" (seria)" if dry else ""), data.get("inserted", 0))
+            rm3.metric("Atualizadas" + (" (seria)" if dry else ""), data.get("updated", 0))
+            rm4.metric("Duplicatas ignoradas", data.get("skipped_duplicate", 0))
+            rm5.metric("Erros", data.get("errors", 0))
+
+            errs = data.get("error_details") or []
+            if errs:
+                with st.expander(f"⚠️ {len(errs)} erro(s) de ingestão"):
+                    for e in errs[:20]:
+                        st.caption(f"page_id={e.get('page_id')} · {e.get('error','')[:120]}")
+                        st.caption(f"URL: {e.get('url','')[:80]}")
+                        st.divider()
+
+            if not dry:
+                # Ranking pós-ingestão
+                st.markdown("---")
+                col_rk1, col_rk2 = st.columns([3, 1])
+                with col_rk1:
+                    st.caption("Após a ingestão, recalcule o ranking para que os novos artigos apareçam na dashboard.")
+                with col_rk2:
+                    if st.button("📊 Recalcular ranking", key="btn_rank_post_ingest", use_container_width=True):
+                        with st.spinner("Ranqueando…"):
+                            rk = run_cli("rank", timeout=120)
+                        if rk["ok"]:
+                            st.success("Ranking recalculado. Acesse a página Radar para ver os novos artigos.")
+                        else:
+                            st.error(rk.get("error", "Erro"))
+
+                st.info("💡 Os novos artigos já aparecem no **Radar** e em **3_Ranking** com seus scores automáticos.")
+
+    st.divider()
+
+    # ── Histórico de ingestões ────────────────────────────────────────────────
+    st.subheader("Histórico de Ingestões")
+    try:
+        hist = ingestion_recent_results(limit=50)
+    except Exception:
+        hist = []
+
+    if hist:
+        hist_df = pd.DataFrame(hist)
+        display_cols = [c for c in ["id", "source_name", "title", "ingestion_status",
+                                    "article_id", "ingestion_error", "ingested_at"] if c in hist_df.columns]
+        if "ingested_at" in hist_df.columns:
+            hist_df["ingested_at"] = hist_df["ingested_at"].apply(lambda v: fmt_dt(v, 16))
+        if "title" in hist_df.columns:
+            hist_df["title"] = hist_df["title"].apply(lambda v: (v or "")[:60])
+        st.dataframe(hist_df[display_cols], use_container_width=True, height=300, hide_index=True)
+    else:
+        st.info("Nenhuma ingestão realizada ainda.")

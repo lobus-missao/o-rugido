@@ -193,6 +193,8 @@ def clamp(value: float, min_value: float = 0, max_value: float = 100) -> float:
 
 
 def automatic_scores(article: dict[str, Any]) -> dict[str, Any]:
+    from .auto_classifier import classify_article as _classify_article
+
     title = article.get("title") or ""
     summary = article.get("summary") or ""
     source_scope = article.get("source_scope") or "brasil"
@@ -200,22 +202,30 @@ def automatic_scores(article: dict[str, Any]) -> dict[str, Any]:
     published_at = article.get("published_at")
     text = f"{title}. {summary}"
 
-    public_count = count_terms(text, PUBLIC_ORG_TERMS)
-    risk_count = count_terms(text, RISK_TERMS)
-    money_count = count_terms(text, MONEY_PUBLIC_TERMS)
-    social_count = count_terms(text, SOCIAL_IMPACT_TERMS)
+    # ── Contagens originais (mantidas para bônus geográficos e sinais específicos) ──
+    public_count  = count_terms(text, PUBLIC_ORG_TERMS)
+    money_count   = count_terms(text, MONEY_PUBLIC_TERMS)
+    social_count  = count_terms(text, SOCIAL_IMPACT_TERMS)
     political_count = count_terms(text, POLITICAL_TERMS)
-    brazil_count = count_terms(text, BRAZIL_TERMS)
-    piaui_count = count_terms(text, PIAUI_TERMS)
+    brazil_count  = count_terms(text, BRAZIL_TERMS)
+    piaui_count   = count_terms(text, PIAUI_TERMS)
     teresina_count = count_terms(text, TERESINA_TERMS)
     ter_t1, ter_t2, ter_t3 = _teresina_signal_strength(text)
-    money_values = extract_money_values(text)
-    novelty = recency_score(published_at)
+    money_values  = extract_money_values(text)
+    novelty       = recency_score(published_at)
+
+    # ── Dimensões do classificador estruturado (substituem risk_count e outros) ──
+    cl = _classify_article(article)
+    gravidade    = cl["auto_gravidade"]           # 0-10: crime grave, crise, calamidade
+    risco_inv    = cl["auto_risco_investigativo"] # 0-10: corrupção, fraude, nepotismo
+    urgencia_cl  = cl["auto_urgencia"]            # 0-10: breaking, decisão imediata
+    impacto      = cl["auto_impacto_social"]      # 0-10: serviços essenciais afetados
+    dinheiro     = cl["auto_dinheiro_publico"]    # 0-10: verbas, contratos, desvio
+    politica_cl  = cl["auto_relevancia_politica"] # 0-10: mandatários, eleições
 
     reasons = []
 
-    # Bônus de riqueza de conteúdo — fontes com resumos ricos (G1, Agência Brasil)
-    # têm mais sinal para análise e devem ranquear levemente acima de feeds rasos (Google News).
+    # ── Riqueza de conteúdo ───────────────────────────────────────────────────
     summary_len = len(summary)
     if summary_len >= 500:
         base_content = 6
@@ -230,23 +240,45 @@ def automatic_scores(article: dict[str, Any]) -> dict[str, Any]:
         if summary_len == 0:
             reasons.append("sem resumo")
 
+    # ── Órgãos públicos: mantido pois PUBLIC_ORG_TERMS é altamente específico ─
     base_public = min(public_count * 3, 12)
-    base_risk = min(risk_count * 4, 16)
-    base_money = min(money_count * 3, 12)
-    base_social = min(social_count * 2, 8)
-    base_political = min(political_count * 2, 8)
-    base_money_value = 6 if money_values else 0
-    base_trust = trust * 6
-    base_novelty = novelty
 
+    # ── Risco: gravidade + risco investigativo, mesmo teto de antes (16) ──────
+    # Usar os dois independentemente permite que crime grave E corrupção
+    # contribuam sem inflar além do cap original.
+    base_risk = min(gravidade * 1.0 + risco_inv * 0.8, 16)
+
+    # ── Dinheiro público: melhor entre contagem de termos e classifier ────────
+    base_money = max(min(money_count * 3, 12), min(dinheiro * 1.2, 12))
+
+    # ── Impacto social: melhor entre contagem e classifier ────────────────────
+    base_social = max(min(social_count * 2, 8), min(impacto * 0.9, 9))
+
+    # ── Política: melhor entre contagem e classifier ──────────────────────────
+    base_political = max(min(political_count * 2, 8), min(politica_cl * 0.8, 8))
+
+    # ── Valor monetário: sinal específico mantido ─────────────────────────────
+    base_money_value = 6 if money_values else 0
+
+    # ── Confiança da fonte: inalterado ────────────────────────────────────────
+    base_trust = trust * 6
+
+    # ── Urgência: blend de recência + sinal semântico de breaking news ────────
+    base_novelty = (novelty + urgencia_cl) / 2
+
+    # ── Reasons ───────────────────────────────────────────────────────────────
     if public_count:
         reasons.append(f"órgãos/vida pública: {public_count}")
-    if risk_count:
-        reasons.append(f"risco/investigação: {risk_count}")
+    if gravidade >= 3:
+        reasons.append(f"gravidade: {gravidade:.0f}/10")
+    if risco_inv >= 3:
+        reasons.append(f"risco investigativo: {risco_inv:.0f}/10")
+    if urgencia_cl >= 3:
+        reasons.append(f"urgência: {urgencia_cl:.0f}/10")
     if money_count:
         reasons.append(f"dinheiro público/contratos: {money_count}")
-    if social_count:
-        reasons.append(f"impacto social: {social_count}")
+    if impacto >= 3:
+        reasons.append(f"impacto social: {impacto:.0f}/10")
     if political_count:
         reasons.append(f"política: {political_count}")
     if money_values:

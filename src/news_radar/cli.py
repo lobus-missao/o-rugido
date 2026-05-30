@@ -354,6 +354,32 @@ def cmd_scrape_source(args) -> None:
     print(json.dumps(result, ensure_ascii=False, indent=2, default=_json_default))
 
 
+def cmd_ingest_scraping(args) -> None:
+    """Ingere scraped_pages elegíveis no pipeline articles."""
+    from .scraper.ingestion import ingest_scraped_pages
+    from .sources import get_source_by_name
+
+    source_id = getattr(args, "source_id", None)
+    source_name = getattr(args, "source_name", None)
+    run_id = getattr(args, "run_id", None)
+
+    if source_name and not source_id:
+        src = get_source_by_name(source_name)
+        if not src:
+            print(json.dumps({"ok": False, "error": f"Fonte não encontrada: {source_name}"},
+                             ensure_ascii=False))
+            return
+        source_id = src["id"]
+
+    result = ingest_scraped_pages(
+        source_id=source_id,
+        run_id=run_id,
+        limit=args.limit,
+        dry_run=args.dry_run,
+    )
+    print(json.dumps({"ok": True, **result}, ensure_ascii=False, indent=2, default=_json_default))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="news-radar",
@@ -467,6 +493,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", action="store_true", help="Extrai sem inserir artigos")
     p.add_argument("--max-items", type=int, default=20, help="Máximo de URLs a processar (default: 20)")
     p.set_defaults(func=cmd_scrape_source)
+
+    p = sub.add_parser(
+        "ingest-scraping",
+        help="Ingere scraped_pages elegíveis no pipeline articles (Fase 10.2).",
+    )
+    p.add_argument("--source-id", type=int, help="Filtrar por source_id")
+    p.add_argument("--source-name", help="Filtrar por nome da fonte")
+    p.add_argument("--run-id", type=int, help="Filtrar por scrape_run id")
+    p.add_argument("--limit", type=int, default=50, help="Máximo de páginas a ingerir (default: 50)")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Simula ingestão sem persistir artigos nem alterar ingestion_status")
+    p.set_defaults(func=cmd_ingest_scraping)
 
     return parser
 

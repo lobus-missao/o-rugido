@@ -127,6 +127,7 @@ def insert_scraped_page(
     title: str | None = None,
     published_at=None,
     error_message: str | None = None,
+    content_text: str | None = None,
 ) -> int:
     """Registra uma scraped_page. Retorna o id."""
     with connect() as conn:
@@ -135,8 +136,9 @@ def insert_scraped_page(
                 """
                 INSERT INTO scraped_pages (
                     source_id, run_id, url, status_code, content_hash,
-                    extraction_status, title, published_at, error_message, fetched_at
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+                    extraction_status, title, published_at, error_message,
+                    content_text, fetched_at
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
                 RETURNING id
                 """,
                 (
@@ -145,6 +147,7 @@ def insert_scraped_page(
                     (title or "")[:500] if title else None,
                     published_at,
                     (error_message or "")[:500] if error_message else None,
+                    content_text[:50000] if content_text else None,
                 ),
             )
             row = cur.fetchone()

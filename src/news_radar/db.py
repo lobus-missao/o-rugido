@@ -333,6 +333,30 @@ MIGRATION_SQL: dict[str, str] = {
     "v10_scraped_pages_idx_run": (
         "CREATE INDEX IF NOT EXISTS idx_scraped_pages_run ON scraped_pages(run_id)"
     ),
+    # Fase 10.2 — Ingestion pipeline: scraped_pages → articles
+    "v10_2_scraped_pages_content_text": (
+        "ALTER TABLE scraped_pages ADD COLUMN IF NOT EXISTS content_text TEXT"
+    ),
+    "v10_2_scraped_pages_ingestion_status": (
+        "ALTER TABLE scraped_pages ADD COLUMN IF NOT EXISTS ingestion_status TEXT NOT NULL DEFAULT 'pending'"
+    ),
+    "v10_2_scraped_pages_article_id": (
+        "ALTER TABLE scraped_pages ADD COLUMN IF NOT EXISTS article_id TEXT REFERENCES articles(id) ON DELETE SET NULL"
+    ),
+    "v10_2_scraped_pages_ingestion_error": (
+        "ALTER TABLE scraped_pages ADD COLUMN IF NOT EXISTS ingestion_error TEXT"
+    ),
+    "v10_2_scraped_pages_ingested_at": (
+        "ALTER TABLE scraped_pages ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMPTZ"
+    ),
+    "v10_2_scraped_pages_ingestion_idx": (
+        "CREATE INDEX IF NOT EXISTS idx_scraped_pages_ingestion_status "
+        "ON scraped_pages(ingestion_status)"
+    ),
+    "v10_2_scraped_pages_article_idx": (
+        "CREATE INDEX IF NOT EXISTS idx_scraped_pages_article_id "
+        "ON scraped_pages(article_id)"
+    ),
 }
 
 DATE_COLUMN_MIGRATIONS = {

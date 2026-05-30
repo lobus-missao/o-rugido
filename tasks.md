@@ -534,5 +534,109 @@ python -m news_radar.cli scrape-source --source-name "G1 Piauí" --urls "https:/
 ### Notas (fora do escopo desta fase)
 - Ativação real de fontes de scraping: validar cada portal individualmente antes de enabled=true
 - Integração de scraped_pages → articles (pipeline de ingestão scraping): Fase 10.2
-- Sitemap/news-sitemap strategy: Fase 10.2
+- Sitemap/news-sitemap strategy: Fase 10.3
 - Scrapy: não implementado intencionalmente — arquitetura preparada para adição futura
+
+---
+
+## Fase 10.2 — Ingestão: scraped_pages → articles ✅ Concluída
+
+**Objetivo:** Integrar scraped_pages ao pipeline principal articles, permitindo que notícias
+coletadas por scraping sejam normalizadas, inseridas no banco, ranqueadas e apareçam
+na dashboard como qualquer notícia RSS.
+
+**Concluída em:** 2026-05-30
+
+### Tarefas
+- [x] Migrations versionadas v10.2 em `db.py` — 7 entradas novas em `MIGRATION_SQL`:
+  - `scraped_pages.content_text TEXT` — armazena texto extraído para ingestão
+  - `scraped_pages.ingestion_status TEXT DEFAULT 'pending'`
+  - `scraped_pages.article_id TEXT REFERENCES articles(id) ON DELETE SET NULL`
+  - `scraped_pages.ingestion_error TEXT`
+  - `scraped_pages.ingested_at TIMESTAMPTZ`
+  - Índices em `ingestion_status` e `article_id`
+- [x] `src/news_radar/scraper/ingestion.py` — módulo de ingestão com:
+  - `build_article_from_scraped_page(page, source=None)` — transforma page → article dict
+  - `get_eligible_pages(source_id, run_id, limit)` — query de páginas elegíveis
+  - `count_eligible_pages(source_id, run_id)` — contagem rápida
+  - `mark_scraped_page_ingested(page_id, article_id)` — marca como ingested
+  - `mark_scraped_page_ingestion_error(page_id, error_message)` — marca como erro
+  - `ingest_scraped_pages(source_id, run_id, limit, dry_run)` — função principal
+- [x] `src/news_radar/scraper/runs.py` — `insert_scraped_page` aceita `content_text` (backward-compatible)
+- [x] `src/news_radar/scraper/__init__.py` — exporta todas as funções de ingestion
+- [x] `src/news_radar/cli.py` — comando `ingest-scraping` com --source-id, --source-name, --run-id, --limit, --dry-run
+- [x] `src/news_radar/dashboard_queries.py` — `ingestion_overview()` e `ingestion_recent_results()`
+- [x] `pages/12_Scraping.py` — nova aba "🔄 Ingestão → Articles" com métricas, dry-run, botão, histórico e link pós-ranking
+- [x] `tests/test_phase10_2_ingestion.py` — 36 testes (migrations, build, dry-run, erros, CLI, queries, compat)
+- [x] `tasks.md` atualizado
+
+### Arquivos Criados/Modificados
+```
+src/news_radar/db.py                        (7 entradas v10_2_* em MIGRATION_SQL)
+src/news_radar/scraper/ingestion.py         (novo — módulo de ingestão)
+src/news_radar/scraper/runs.py              (insert_scraped_page: +content_text)
+src/news_radar/scraper/__init__.py          (exports de ingestion)
+src/news_radar/cli.py                       (cmd_ingest_scraping + parser)
+src/news_radar/dashboard_queries.py        (ingestion_overview, ingestion_recent_results)
+pages/12_Scraping.py                        (nova aba Ingestão + import run_cli corrigido)
+tests/test_phase10_2_ingestion.py           (novo — 36 testes)
+```
+
+### Critérios de Aceite
+- [x] Existe `src/news_radar/scraper/ingestion.py`
+- [x] Existe comando `ingest-scraping` no CLI
+- [x] scraped_pages bem-sucedidas podem virar articles
+- [x] dry-run funciona (simula sem persistir)
+- [x] Duplicatas por canonical_url são evitadas (reutiliza upsert_article)
+- [x] Páginas ingeridas ficam marcadas (ingestion_status='ingested')
+- [x] Erros ficam registrados (ingestion_status='error', ingestion_error)
+- [x] Erro em uma página não derruba o lote inteiro
+- [x] Dashboard permite acompanhar/acionar ingestão (aba 4)
+- [x] RSS atual continua funcionando (collector.py não alterado)
+- [x] Ranking continua funcionando (ranker.py não alterado)
+- [x] Testes passam (36 novos + todos os anteriores)
+- [x] tasks.md atualizado
+
+### Como usar
+```bash
+# Aplicar migrations
+python -m news_radar.cli init-db
+
+# Dry-run: simula sem persistir
+python -m news_radar.cli ingest-scraping --limit 20 --dry-run
+
+# Ingestão real
+python -m news_radar.cli ingest-scraping --limit 50
+
+# Por fonte específica
+python -m news_radar.cli ingest-scraping --source-name "G1 Piauí" --limit 10
+
+# Por run_id específico
+python -m news_radar.cli ingest-scraping --run-id 123
+
+# Após ingestão: recalcular ranking
+python -m news_radar.cli rank
+```
+
+### Como validar no banco
+```sql
+-- Páginas ingeridas
+SELECT ingestion_status, COUNT(*) FROM scraped_pages GROUP BY ingestion_status;
+
+-- Artigos originados do scraping
+SELECT * FROM articles WHERE raw_json::jsonb->>'origin' = 'scraping' LIMIT 10;
+
+-- Histórico por página
+SELECT sp.url, sp.ingestion_status, sp.ingested_at, a.title AS article_title
+FROM scraped_pages sp
+LEFT JOIN articles a ON sp.article_id = a.id
+WHERE sp.ingestion_status = 'ingested'
+ORDER BY sp.ingested_at DESC;
+```
+
+### Notas (fora do escopo desta fase)
+- Ativação de portais individuais: validar cada um em "Testar URL" antes de enabled=true
+- Integração content_text nos portais codificados: dashboard 12 ainda salva sem content_text
+  (portais devem passar content_text ao chamar insert_scraped_page na próxima fase)
+- Sitemap/news-sitemap como estratégia: Fase 10.3
+- Scrapy: não necessário com a arquitetura atual

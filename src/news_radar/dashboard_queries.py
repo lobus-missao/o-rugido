@@ -1122,3 +1122,68 @@ def scraping_source_rules(
                 return [dict(r) for r in cur.fetchall()]
     except Exception:
         return []
+
+
+# ── Ingestion — Fase 10.2 ─────────────────────────────────────────────────────
+
+def ingestion_overview() -> dict:
+    """Resumo do estado de ingestão de scraped_pages → articles."""
+    empty: dict = {
+        "pages_total": 0,
+        "pages_pending": 0,
+        "pages_ingested": 0,
+        "pages_error": 0,
+        "articles_from_scraping": 0,
+    }
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        COUNT(*)                                          AS pages_total,
+                        COUNT(*) FILTER (WHERE ingestion_status = 'pending'
+                                           AND extraction_status = 'ok'
+                                           AND title IS NOT NULL AND title <> ''
+                                           AND url IS NOT NULL AND url <> '')   AS pages_pending,
+                        COUNT(*) FILTER (WHERE ingestion_status = 'ingested') AS pages_ingested,
+                        COUNT(*) FILTER (WHERE ingestion_status = 'error')    AS pages_error
+                    FROM scraped_pages
+                """)
+                row = cur.fetchone()
+                if row:
+                    empty.update(dict(row))
+
+                cur.execute("""
+                    SELECT COUNT(*) AS n FROM articles
+                    WHERE raw_json::jsonb->>'origin' = 'scraping'
+                """)
+                r2 = cur.fetchone()
+                if r2:
+                    empty["articles_from_scraping"] = int(r2["n"])
+
+        return empty
+    except Exception:
+        return empty
+
+
+def ingestion_recent_results(limit: int = 50) -> list[dict]:
+    """Lista scraped_pages com ingestion_status != 'pending', mais recentes primeiro."""
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT sp.id, sp.url, sp.title, sp.ingestion_status,
+                           sp.article_id, sp.ingestion_error, sp.ingested_at,
+                           sp.fetched_at, s.name AS source_name
+                    FROM scraped_pages sp
+                    LEFT JOIN sources s ON sp.source_id = s.id
+                    WHERE sp.ingestion_status <> 'pending'
+                    ORDER BY sp.ingested_at DESC NULLS LAST, sp.fetched_at DESC
+                    LIMIT %s
+                    """,
+                    (limit,),
+                )
+                return [dict(r) for r in cur.fetchall()]
+    except Exception:
+        return []
