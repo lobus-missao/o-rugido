@@ -443,6 +443,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--scope", choices=["brasil", "piaui", "teresina", "todos"], default="todos")
     p.set_defaults(func=cmd_cluster_articles)
 
+    p = sub.add_parser("cleanup-batches", help="Remove arquivos de lote IA mais antigos que N dias.")
+    p.add_argument("--days", type=int, default=30, help="Reter arquivos dos últimos N dias (default: 30)")
+    p.set_defaults(func=lambda a: print(json.dumps(
+        __import__('news_radar.ai_batches', fromlist=['cleanup_old_batch_files']).cleanup_old_batch_files(a.days),
+        ensure_ascii=False)))
+
     p = sub.add_parser("backup", help="Exporta banco para arquivo .sql via pg_dump.")
     p.add_argument("--output", help="Arquivo de saída (default: backup_YYYYMMDD_HHMMSS.sql)")
     p.set_defaults(func=cmd_backup)

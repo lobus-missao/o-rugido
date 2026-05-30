@@ -231,6 +231,7 @@ def test_approve_article_chama_try_record(monkeypatch):
     """approve_article() chama _try_record_editorial_action após update_dispatch."""
     monkeypatch.setattr(dispatch_module, "get_dispatch", lambda _id: _fake_dispatch_row())
     monkeypatch.setattr(dispatch_module, "update_dispatch", lambda _id, **kw: None)
+    monkeypatch.setattr(dispatch_module, "_try_claim_dispatch", lambda *a: True)
     monkeypatch.setattr(dispatch_module, "_edit_article_message", lambda *a, **kw: None)
     monkeypatch.setattr(
         dispatch_module, "generate_card_for_dispatch",
@@ -258,6 +259,7 @@ def test_reject_article_chama_try_record(monkeypatch):
     """reject_article() chama _try_record_editorial_action após update_dispatch."""
     monkeypatch.setattr(dispatch_module, "get_dispatch", lambda _id: _fake_dispatch_row())
     monkeypatch.setattr(dispatch_module, "update_dispatch", lambda _id, **kw: None)
+    monkeypatch.setattr(dispatch_module, "_try_claim_dispatch", lambda *a: True)
     monkeypatch.setattr(dispatch_module, "_edit_article_message", lambda *a, **kw: None)
 
     recorded = []

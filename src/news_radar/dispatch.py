@@ -115,6 +115,23 @@ def update_dispatch(dispatch_id: int, **fields) -> None:
             cur.execute(f"UPDATE dispatches SET {set_clause} WHERE id = %s", values)
 
 
+def _try_claim_dispatch(dispatch_id: int, from_status: str, to_status: str) -> bool:
+    """
+    UPDATE atômico com WHERE status = from_status.
+    Retorna True se a linha foi atualizada (claim bem-sucedido).
+    Resolve race condition em callbacks Telegram: dois cliques simultâneos
+    disputam o UPDATE — apenas o primeiro vence, o segundo retorna False.
+    """
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE dispatches SET status = %s, updated_at = %s "
+                "WHERE id = %s AND status = %s",
+                (to_status, utc_now(), dispatch_id, from_status),
+            )
+            return cur.rowcount == 1
+
+
 def get_edition_dispatches(edition: str, edition_date: date) -> list[dict]:
     with connect() as conn:
         with conn.cursor() as cur:
@@ -311,10 +328,14 @@ def approve_article(
     if not dispatch:
         return {"ok": False, "error": "dispatch nao encontrado", "dispatch_id": dispatch_id}
 
-    # Bloqueia double-processing
     if dispatch["status"] not in ("pending_article",):
         return {"ok": True, "skipped": True, "dispatch_id": dispatch_id, "status": dispatch["status"]}
 
+    # UPDATE atômico: só um processo vence se dois callbacks chegarem ao mesmo tempo
+    if not _try_claim_dispatch(dispatch_id, "pending_article", "article_approved"):
+        return {"ok": True, "skipped": True, "dispatch_id": dispatch_id, "status": "article_approved"}
+
+    # Complementa com reviewer info (status já garantido pelo claim atômico acima)
     update_kwargs: dict = dict(
         status="article_approved",
         article_reviewed_by=user,
@@ -401,9 +422,11 @@ def reject_article(dispatch_id: int, user: str = "Editor", notes: str | None = N
     if not dispatch:
         return {"ok": False, "error": "dispatch nao encontrado", "dispatch_id": dispatch_id}
 
-    # Bloqueia double-processing
     if dispatch["status"] not in ("pending_article",):
         return {"ok": True, "skipped": True, "dispatch_id": dispatch_id, "status": dispatch["status"]}
+
+    if not _try_claim_dispatch(dispatch_id, "pending_article", "article_rejected"):
+        return {"ok": True, "skipped": True, "dispatch_id": dispatch_id, "status": "article_rejected"}
 
     update_kwargs: dict = dict(
         status="article_rejected",

@@ -206,7 +206,8 @@ class PortalScraper(ABC):
                 return result
 
             for url in result.urls_found[:max_articles]:
-                time.sleep(self.rate_limit)
+                # Rate limit garantido na base — subclasses não precisam implementar
+                time.sleep(max(self.rate_limit, 0.5))
                 try:
                     article = self.scrape_article(url)
 

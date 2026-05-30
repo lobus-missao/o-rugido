@@ -37,6 +37,7 @@ def _make_dispatch(status: str, article_id: str = "art-x") -> dict:
 class _FakeCursor:
     def __init__(self):
         self.executed = []
+        self.rowcount = 1  # simula UPDATE bem-sucedido em _try_claim_dispatch
 
     def __enter__(self):
         return self
@@ -162,6 +163,7 @@ class TestRejectArticle:
     def test_retorna_article_rejected(self, monkeypatch):
         monkeypatch.setattr(dispatch, "get_dispatch", lambda _: _make_dispatch("pending_article"))
         monkeypatch.setattr(dispatch, "update_dispatch", lambda _, **kw: None)
+        monkeypatch.setattr(dispatch, "_try_claim_dispatch", lambda *a: True)
 
         result = dispatch.reject_article(99, "Editor")
 
@@ -171,6 +173,7 @@ class TestRejectArticle:
         updates = []
         monkeypatch.setattr(dispatch, "get_dispatch", lambda _: _make_dispatch("pending_article"))
         monkeypatch.setattr(dispatch, "update_dispatch", lambda _, **kw: updates.append(kw))
+        monkeypatch.setattr(dispatch, "_try_claim_dispatch", lambda *a: True)
 
         dispatch.reject_article(99, "Editor", notes="Fora do escopo.")
 
@@ -190,6 +193,7 @@ class TestRejectArticle:
         recorded = []
         monkeypatch.setattr(dispatch, "get_dispatch", lambda _: _make_dispatch("pending_article"))
         monkeypatch.setattr(dispatch, "update_dispatch", lambda _, **kw: None)
+        monkeypatch.setattr(dispatch, "_try_claim_dispatch", lambda *a: True)
         monkeypatch.setattr(dispatch, "_try_record_editorial_action",
                             lambda **kw: recorded.append(kw))
 

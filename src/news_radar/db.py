@@ -7,6 +7,7 @@ from typing import Iterator
 
 import psycopg2
 import psycopg2.extras
+import psycopg2.sql
 
 from .config import DATABASE_URL, ensure_dirs
 
@@ -235,6 +236,24 @@ MIGRATION_SQL: dict[str, str] = {
     "v8_dispatches_review_notes": (
         "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS review_notes TEXT"
     ),
+    # Índice full-text para busca em título + resumo (evita ILIKE seq scan)
+    "v10_articles_fts_index": (
+        "CREATE INDEX IF NOT EXISTS idx_articles_fts "
+        "ON articles USING gin(to_tsvector('portuguese', coalesce(title,'') || ' ' || coalesce(summary,'')))"
+    ),
+    # Índice composto para order by score + data (evita sort em memória)
+    "v10_articles_score_date_brasil": (
+        "CREATE INDEX IF NOT EXISTS idx_articles_score_date_brasil "
+        "ON articles(final_score_brasil DESC, published_at DESC NULLS LAST)"
+    ),
+    "v10_articles_score_date_piaui": (
+        "CREATE INDEX IF NOT EXISTS idx_articles_score_date_piaui "
+        "ON articles(final_score_piaui DESC, published_at DESC NULLS LAST)"
+    ),
+    "v10_articles_score_date_teresina": (
+        "CREATE INDEX IF NOT EXISTS idx_articles_score_date_teresina "
+        "ON articles(final_score_teresina DESC, published_at DESC NULLS LAST)"
+    ),
     # Fase 10.1 — Scraping infra
     "v10_source_rules_table": """
         CREATE TABLE IF NOT EXISTS source_rules (
@@ -385,10 +404,15 @@ def _ensure_datetime_columns(cur) -> None:
             )
             row = cur.fetchone()
             if row and row["data_type"] != "timestamp with time zone":
+                # Usa psycopg2.sql para escapar identificadores — evita SQL injection
                 cur.execute(
-                    "ALTER TABLE %s ALTER COLUMN %s TYPE TIMESTAMPTZ"
-                    " USING NULLIF(%s::text, '')::timestamptz"
-                    % (table, column, column)
+                    psycopg2.sql.SQL(
+                        "ALTER TABLE {t} ALTER COLUMN {c} TYPE TIMESTAMPTZ"
+                        " USING NULLIF({c}::text, '')::timestamptz"
+                    ).format(
+                        t=psycopg2.sql.Identifier(table),
+                        c=psycopg2.sql.Identifier(column),
+                    )
                 )
 
 

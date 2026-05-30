@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import math
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -453,6 +453,18 @@ def import_ai_result(path: str | Path, batch_id: str | None = None) -> dict[str,
     if not isinstance(data, list):
         raise ValueError("Resultado da IA precisa ser uma lista JSON.")
 
+    # Valida schema de cada item antes de tocar no banco
+    item_errors: list[str] = []
+    for i, item in enumerate(data):
+        ok, err = validate_ai_item(item)
+        if not ok:
+            item_errors.append(f"item[{i}]: {err}")
+    if item_errors:
+        raise ValueError(
+            f"Resposta da IA contém {len(item_errors)} item(s) inválido(s) — importação bloqueada.\n"
+            + "\n".join(item_errors[:10])
+        )
+
     updated = 0
     ignored = 0
 
@@ -696,3 +708,44 @@ def import_ai_result_detailed(
         "batch_id": batch_id,
         "logs": logs,
     }
+
+
+def cleanup_old_batch_files(days: int = 30) -> dict[str, int]:
+    """
+    Remove arquivos de lote (prompts, payloads, resultados) mais antigos que N dias.
+    Mantém apenas arquivos de lotes com status 'pending' ou 'running' no banco.
+    Retorna contagem de arquivos removidos.
+    """
+    ensure_dirs()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # IDs de lotes ativos (não remover os arquivos deles)
+    active_ids: set[str] = set()
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT batch_id FROM ai_batches WHERE status IN ('pending','running')")
+                active_ids = {row["batch_id"] for row in cur.fetchall()}
+    except Exception:
+        pass
+
+    removed = 0
+    errors = 0
+    for directory in (AI_BATCHES_DIR, AI_RESULTS_DIR):
+        for f in directory.glob("*"):
+            if not f.is_file():
+                continue
+            # Extrai batch_id do nome (ex: batch_brasil_20260101_120000_part00.json)
+            batch_id = f.stem.removesuffix(".result").removesuffix(".prompt")
+            if batch_id in active_ids:
+                continue
+            try:
+                mtime = datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc)
+                if mtime < cutoff:
+                    f.unlink()
+                    removed += 1
+            except Exception:
+                errors += 1
+
+    _logger.info("cleanup_old_batch_files: %d removidos, %d erros (days=%d)", removed, errors, days)
+    return {"removed": removed, "errors": errors, "days": days}

@@ -90,8 +90,10 @@ class TestEnsureDatetimeColumns:
 
         class FakeCursor:
             def execute(self, q, p=None):
-                if "ALTER TABLE" in q.upper():
-                    executed_alters.append(q)
+                # psycopg2.sql.Composed não tem .upper() — converte para string
+                q_str = repr(q) if hasattr(q, "as_string") else str(q)
+                if "ALTER TABLE" in q_str.upper():
+                    executed_alters.append(q_str)
 
             def fetchone(self):
                 return {"data_type": "text"}

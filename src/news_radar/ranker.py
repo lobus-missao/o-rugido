@@ -366,6 +366,8 @@ def auto_classify() -> int:
 
     with connect() as conn:
         with conn.cursor() as cur:
+            # FOR UPDATE SKIP LOCKED: se outro processo já estiver classificando
+            # os mesmos artigos, pula — evita dois rankers calculando o mesmo artigo.
             cur.execute("""
                 SELECT id,
                     GREATEST(
@@ -375,6 +377,7 @@ def auto_classify() -> int:
                     ) AS best_score
                 FROM articles
                 WHERE priority IS NULL
+                FOR UPDATE SKIP LOCKED
             """)
             rows = [dict(r) for r in cur.fetchall()]
 

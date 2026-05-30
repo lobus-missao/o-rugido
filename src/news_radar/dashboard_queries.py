@@ -106,12 +106,20 @@ def radar_articles(
         params.append(source)
 
     if search:
-        conditions.append("(title ILIKE %s OR summary ILIKE %s)")
-        params.extend([f"%{search}%", f"%{search}%"])
+        # Usa índice GIN full-text (idx_articles_fts) — evita seq scan com ILIKE
+        conditions.append(
+            "to_tsvector('portuguese', coalesce(title,'') || ' ' || coalesce(summary,'')) "
+            "@@ plainto_tsquery('portuguese', %s)"
+        )
+        params.append(search)
 
     if entity:
-        conditions.append("(ai_json::text ILIKE %s OR title ILIKE %s OR summary ILIKE %s)")
-        params.extend([f"%{entity}%", f"%{entity}%", f"%{entity}%"])
+        conditions.append(
+            "(to_tsvector('portuguese', coalesce(title,'') || ' ' || coalesce(summary,'')) "
+            " @@ plainto_tsquery('portuguese', %s)"
+            " OR ai_json::text ILIKE %s)"
+        )
+        params.extend([entity, f"%{entity}%"])
 
     where = "WHERE " + " AND ".join(conditions)
     params.append(limit)
@@ -133,6 +141,17 @@ def update_editorial_status(article_id: str, status: str) -> None:
                 "UPDATE articles SET editorial_status=%s, updated_at=%s WHERE id=%s",
                 (status, utc_now(), article_id),
             )
+    # Invalida caches TTL para que a UI reflita o novo status imediatamente
+    _invalidate_article_caches()
+
+
+def _invalidate_article_caches() -> None:
+    """Limpa caches TTL que dependem de status de artigos."""
+    for fn in (pipeline_health, compute_alerts, ai_coverage_stats, source_health):
+        try:
+            fn.cache_clear()
+        except Exception:
+            pass
 
 
 # ── Clusters ──────────────────────────────────────────────────────────────────

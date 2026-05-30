@@ -62,6 +62,7 @@ def test_approve_news_records_reviewer_without_generating_card(monkeypatch):
         "article_tg_message_id": None,
     })
     monkeypatch.setattr(dispatch, "update_dispatch", lambda dispatch_id, **fields: updates.append(fields))
+    monkeypatch.setattr(dispatch, "_try_claim_dispatch", lambda *a: True)
 
     result = dispatch.approve_article(10, "Editor Teste", generate_card=False, dry_run=True)
 

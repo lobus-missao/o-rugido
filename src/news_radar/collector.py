@@ -235,15 +235,28 @@ def collect_feeds(limit_per_feed: int = 30) -> dict[str, Any]:
                 entries = parsed.entries[:limit_per_feed] if limit_per_feed else parsed.entries
 
                 for entry in entries:
-                    item = normalize_entry(entry, source)
-                    if not item:
-                        continue
-                    inserted = upsert_article(conn, item)
-                    collected += 1
-                    if inserted:
-                        result["inserted"] += 1
-                    else:
-                        result["updated"] += 1
+                    try:
+                        item = normalize_entry(entry, source)
+                        if not item:
+                            continue
+                        inserted = upsert_article(conn, item)
+                        collected += 1
+                        if inserted:
+                            result["inserted"] += 1
+                        else:
+                            result["updated"] += 1
+                    except Exception as entry_exc:
+                        _logger.warning(
+                            "Erro ao processar entry '%s' de '%s': %s",
+                            getattr(entry, "title", "?")[:80],
+                            source.get("name", "?"),
+                            str(entry_exc)[:200],
+                        )
+                        result["errors"].append({
+                            "source": source.get("name"),
+                            "entry": getattr(entry, "title", "?")[:80],
+                            "error": str(entry_exc)[:200],
+                        })
 
                 if getattr(parsed, "bozo", False):
                     bozo_exception = getattr(parsed, "bozo_exception", None)
