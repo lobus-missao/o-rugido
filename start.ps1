@@ -34,7 +34,7 @@ if (-not $apiRunning) {
 Write-Host "[3/5] Dashboard (porta 8501)..." -ForegroundColor Yellow
 $dashRunning = try { (Invoke-WebRequest "http://localhost:8501" -TimeoutSec 2 -UseBasicParsing).StatusCode -eq 200 } catch { $false }
 if (-not $dashRunning) {
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ROOT'; & '$VENV\streamlit.exe' run dashboard.py --server.port 8501" -WindowStyle Minimized
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ROOT'; & '$VENV\streamlit.exe' run dashboard/app.py --server.port 8501" -WindowStyle Minimized
     Start-Sleep 3
     Write-Host "      OK" -ForegroundColor Green
 } else {

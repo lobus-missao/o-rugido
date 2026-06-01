@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from news_radar.card_renderer import _render_html
+from news_radar.services.rendering import _render_html
 
 
 def test_render_card_html_smoke():
@@ -40,7 +40,7 @@ def test_init_db_smoke_against_configured_postgres(monkeypatch):
     if not test_database_url:
         pytest.skip("Defina TEST_DATABASE_URL para rodar o smoke real de PostgreSQL.")
 
-    import news_radar.db as db
+    import news_radar.core.db as db
 
     monkeypatch.setattr(db, "DATABASE_URL", test_database_url)
     db.init_db()

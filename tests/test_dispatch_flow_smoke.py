@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
-from news_radar import dispatch
+from news_radar.services import editorial as dispatch
 
 
 class FakeCursor:
@@ -22,13 +22,15 @@ class FakeCursor:
             self.updated.append((query, params))
 
     def fetchall(self):
+        from datetime import datetime, timezone
+        recent = datetime.now(timezone.utc)
         if self.calls == 1:
             return [{"article_id": "old"}]
         return [
-            {"id": "art-1", "title": "A", "final_score_brasil": 90},
-            {"id": "old", "title": "Old", "final_score_brasil": 89},
-            {"id": "art-2", "title": "B", "final_score_brasil": 80},
-            {"id": "art-3", "title": "C", "final_score_brasil": 70},
+            {"id": "art-1", "title": "A", "final_score_piaui": 90, "published_at": recent, "editorial_status": "discovered"},
+            {"id": "old", "title": "Old", "final_score_piaui": 89, "published_at": recent, "editorial_status": "discovered"},
+            {"id": "art-2", "title": "B", "final_score_piaui": 80, "published_at": recent, "editorial_status": "discovered"},
+            {"id": "art-3", "title": "C", "final_score_piaui": 70, "published_at": recent, "editorial_status": "discovered"},
         ]
 
 
@@ -48,7 +50,7 @@ def fake_connect():
 def test_select_top_articles_excludes_already_dispatched(monkeypatch):
     monkeypatch.setattr(dispatch, "connect", fake_connect)
 
-    selected = dispatch.select_top_articles("morning", scope="brasil", top=3)
+    selected = dispatch.select_top_articles("default", scope="piaui", top=3)
 
     assert [item["id"] for item in selected] == ["art-1", "art-2", "art-3"]
 
@@ -84,7 +86,7 @@ def test_generate_card_for_dispatch_sets_pending_card(monkeypatch, tmp_path):
     })
     monkeypatch.setattr(dispatch, "update_dispatch", lambda dispatch_id, **fields: updates.append(fields))
 
-    import news_radar.card_renderer as card_renderer
+    import news_radar.services.rendering as card_renderer
     monkeypatch.setattr(card_renderer, "render_cards", lambda **kwargs: [{"card_path": str(card_path)}])
 
     result = dispatch.generate_card_for_dispatch(10, "Editor Teste", dry_run=True)

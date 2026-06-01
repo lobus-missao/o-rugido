@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from types import SimpleNamespace
 
-from news_radar import collector
+from news_radar.services import ingestion as collector
 
 
 class FakeCursor:

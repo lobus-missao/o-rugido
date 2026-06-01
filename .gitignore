@@ -14,6 +14,9 @@ data/cards/*.png
 data/cards/*.html
 *.db
 
+# n8n workflows — mantemos só no n8n (contém credenciais)
+docs/n8n-workflows/
+
 .dockerignore
 .vscode/
 .idea/

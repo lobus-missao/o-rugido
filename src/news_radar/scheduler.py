@@ -38,8 +38,8 @@ _scheduler = None  # instância BackgroundScheduler; None = não iniciado
 
 def _job_collect_and_rank() -> None:
     """Coleta RSS de todos os feeds e recalcula ranking. Roda a cada 30 minutos."""
-    from .collector import collect_feeds
-    from .ranker import rank_all
+    from .services.ingestion import collect_feeds
+    from .services.ranker import rank_all
 
     _logger.info("Scheduler [collect_and_rank]: iniciando coleta RSS...")
     try:
@@ -68,7 +68,7 @@ def _job_dispatch(edition: str, scope: str, top: int) -> None:
     O guard de idempotência em create_dispatch() bloqueia envio duplicado
     caso o n8n e o scheduler disparem simultaneamente.
     """
-    from .dispatch import create_dispatch
+    from .services.editorial import create_dispatch
 
     _logger.info("Scheduler [dispatch_%s]: iniciando scope=%s top=%d", edition, scope, top)
     try:
@@ -119,28 +119,10 @@ def create_scheduler():
     sched.add_job(
         _job_dispatch,
         "cron",
-        args=["morning", scope, top],
-        hour=6,
-        minute=30,
-        id="dispatch_morning",
-        replace_existing=True,
-    )
-    sched.add_job(
-        _job_dispatch,
-        "cron",
-        args=["noon", scope, top],
-        hour=11,
-        minute=30,
-        id="dispatch_noon",
-        replace_existing=True,
-    )
-    sched.add_job(
-        _job_dispatch,
-        "cron",
-        args=["evening", scope, top],
-        hour=17,
-        minute=30,
-        id="dispatch_evening",
+        args=["default", scope, top],
+        hour=7,
+        minute=0,
+        id="dispatch_default",
         replace_existing=True,
     )
 
