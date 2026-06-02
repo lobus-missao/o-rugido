@@ -17,7 +17,6 @@ import pytest
 import news_radar.repositories.sources as src_module
 from news_radar.repositories import editorial_actions as ed_module
 
-
 # ---------------------------------------------------------------------------
 # Helpers de mock (mesmo padrão de test_dispatch_idempotency.py)
 # ---------------------------------------------------------------------------
@@ -108,7 +107,7 @@ def test_list_sources_filtro_enabled_only(monkeypatch):
 
     src_module.list_sources(enabled_only=True)
 
-    query, params = cur.executed[0]
+    query, _params = cur.executed[0]
     assert "enabled = TRUE" in query
 
 
@@ -405,6 +404,7 @@ def test_sources_e_editorial_smoke_postgres(monkeypatch):
 
     # Repatchar connect nos módulos carregados para usar a URL de teste
     import importlib
+
     import news_radar.repositories.sources as src_real
     import news_radar.services.editorial as ed_real
     importlib.reload(src_real)
@@ -460,7 +460,6 @@ def test_sources_e_editorial_smoke_postgres(monkeypatch):
     assert any(a["id"] == action_id for a in actions)
 
     # Cleanup
-    with db.connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM editorial_actions WHERE id = %s", (action_id,))
-            cur.execute("DELETE FROM sources WHERE id = %s", (s["id"],))
+    with db.connect() as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM editorial_actions WHERE id = %s", (action_id,))
+        cur.execute("DELETE FROM sources WHERE id = %s", (s["id"],))

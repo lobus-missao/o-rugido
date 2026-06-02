@@ -7,11 +7,8 @@ from __future__ import annotations
 
 import sys
 import time
-from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock
 
 SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
@@ -68,7 +65,7 @@ class TestMigrationSQL:
 class TestEnsureDatetimeColumns:
     def test_nao_executa_alter_quando_ja_e_timestamptz(self):
         """Colunas já TIMESTAMPTZ não devem ser alteradas."""
-        from news_radar.core.db import _ensure_datetime_columns, DATE_COLUMN_MIGRATIONS
+        from news_radar.core.db import _ensure_datetime_columns
 
         executed_alters = []
 
@@ -234,8 +231,9 @@ class TestTTLCache:
 
 class TestBackupCommand:
     def test_retorna_error_quando_pg_dump_ausente(self, monkeypatch, capsys):
-        import shutil
         import argparse
+        import shutil
+
         from news_radar.cli import cmd_backup
 
         monkeypatch.setattr(shutil, "which", lambda name: None)
@@ -250,9 +248,10 @@ class TestBackupCommand:
         assert "pg_dump" in result["error"].lower() or "manual" in result
 
     def test_backup_com_pg_dump_disponivel(self, monkeypatch, tmp_path, capsys):
+        import argparse
         import shutil
         import subprocess
-        import argparse
+
         from news_radar.cli import cmd_backup
 
         # Simula pg_dump disponível e funcionando

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import streamlit as st
-
 from components import article_card, run_cli, sidebar_controls
 
 from news_radar.repositories.articles import top_articles

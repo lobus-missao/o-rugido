@@ -13,13 +13,10 @@ Ref: docs/specs/08-editorial-dashboard.md, docs/specs/10-approval-publication.md
 from __future__ import annotations
 
 from contextlib import contextmanager
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
-
-import news_radar.services.ingestion as collector_module
 import news_radar.services.editorial as dispatch_module
-
+import news_radar.services.ingestion as collector_module
 
 # ===========================================================================
 # Helpers de mock (mesmo padrão das fases anteriores)

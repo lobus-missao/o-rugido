@@ -7,11 +7,11 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from .core.config import DATABASE_URL
+from .core.db import connect, init_db
 from .repositories.articles import SCORE_COLUMN, stats, top_articles, update_card_status
 from .services.ingestion import collect_feeds
 from .services.ranker import rank_all
-from .core.config import DATABASE_URL
-from .core.db import connect, init_db
 
 
 def _json_default(obj):
@@ -102,18 +102,17 @@ def cmd_mark_published(args) -> None:
 
 def cmd_cleanup(args) -> None:
     cutoff_articles = datetime.now(timezone.utc) - timedelta(days=args.days)
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
                 DELETE FROM articles
                 WHERE published_at < %s
                   AND card_status NOT IN ('approved')
                   AND ai_score IS NULL
                 """,
-                (cutoff_articles,),
-            )
-            deleted_articles = cur.rowcount
+            (cutoff_articles,),
+        )
+        deleted_articles = cur.rowcount
     print(json.dumps({
         "deleted_articles": deleted_articles,
         "articles_older_than_days": args.days,

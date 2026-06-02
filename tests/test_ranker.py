@@ -16,7 +16,6 @@ from news_radar.services.ranker import (
     recency_score,
 )
 
-
 # ── clamp ────────────────────────────────────────────────────────────────────
 
 class TestClamp:

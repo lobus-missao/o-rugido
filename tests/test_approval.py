@@ -9,16 +9,13 @@ from __future__ import annotations
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from news_radar.services import editorial as dispatch
-
 
 # ── Helpers de fixture ────────────────────────────────────────────────────────
 

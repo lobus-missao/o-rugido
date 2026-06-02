@@ -8,16 +8,16 @@ from __future__ import annotations
 import json
 import logging
 import os
+from contextlib import suppress
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 import requests
 
-_logger = logging.getLogger(__name__)
-
 from news_radar.core.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 from news_radar.core.db import connect, utc_now
+
+_logger = logging.getLogger(__name__)
 
 EDITIONS = {
     "default": {"label": "Dispatch", "dispatch_hour": 7, "dispatch_min": 0, "post_hour": 7},
@@ -80,12 +80,11 @@ def _try_record_editorial_action(
 def _try_update_article_editorial_status(article_id: str, status: str) -> None:
     """Atualiza editorial_status do artigo (best-effort). Não quebra o fluxo em caso de falha."""
     try:
-        with connect() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE articles SET editorial_status=%s, updated_at=NOW() WHERE id=%s",
-                    (status, article_id),
-                )
+        with connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "UPDATE articles SET editorial_status=%s, updated_at=NOW() WHERE id=%s",
+                (status, article_id),
+            )
     except Exception as exc:
         _logger.warning(
             "Falha ao atualizar editorial_status='%s' para article_id=%s: %s",
@@ -96,28 +95,26 @@ def _try_update_article_editorial_status(article_id: str, status: str) -> None:
 
 
 def get_dispatch(dispatch_id: int) -> dict | None:
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM dispatches WHERE id = %s", (dispatch_id,))
-            row = cur.fetchone()
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute("SELECT * FROM dispatches WHERE id = %s", (dispatch_id,))
+        row = cur.fetchone()
     return dict(row) if row else None
 
 
 def get_dispatch_with_article(dispatch_id: int) -> dict | None:
     """Retorna `{dispatch, article, card_path}` ou None se dispatch não existir."""
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
                 SELECT d.*, a.title AS article_title, a.url AS article_url,
                        a.final_score_piaui, a.priority, a.category, a.card_path
                 FROM dispatches d
                 JOIN articles a ON a.id = d.article_id
                 WHERE d.id = %s
                 """,
-                (dispatch_id,),
-            )
-            row = cur.fetchone()
+            (dispatch_id,),
+        )
+        row = cur.fetchone()
     if not row:
         return None
     row = dict(row)
@@ -138,10 +135,9 @@ def get_dispatch_with_article(dispatch_id: int) -> dict | None:
 def update_dispatch(dispatch_id: int, **fields) -> None:
     fields["updated_at"] = utc_now()
     set_clause = ", ".join(f"{k} = %s" for k in fields)
-    values = list(fields.values()) + [dispatch_id]
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(f"UPDATE dispatches SET {set_clause} WHERE id = %s", values)
+    values = [*fields.values(), dispatch_id]
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(f"UPDATE dispatches SET {set_clause} WHERE id = %s", values)
 
 
 def _try_claim_dispatch(dispatch_id: int, from_status: str, to_status: str) -> bool:
@@ -151,20 +147,18 @@ def _try_claim_dispatch(dispatch_id: int, from_status: str, to_status: str) -> b
     Resolve race condition em callbacks Telegram: dois cliques simultâneos
     disputam o UPDATE — apenas o primeiro vence, o segundo retorna False.
     """
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE dispatches SET status = %s, updated_at = %s "
-                "WHERE id = %s AND status = %s",
-                (to_status, utc_now(), dispatch_id, from_status),
-            )
-            return cur.rowcount == 1
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE dispatches SET status = %s, updated_at = %s "
+            "WHERE id = %s AND status = %s",
+            (to_status, utc_now(), dispatch_id, from_status),
+        )
+        return cur.rowcount == 1
 
 
 def get_edition_dispatches(edition: str, edition_date: date) -> list[dict]:
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute("""
                 SELECT d.*, a.title, a.source, a.summary, a.final_score_piaui,
                        a.priority, a.ai_json, a.card_path, a.canonical_url, a.published_at
                 FROM dispatches d
@@ -172,7 +166,7 @@ def get_edition_dispatches(edition: str, edition_date: date) -> list[dict]:
                 WHERE d.edition = %s AND d.edition_date = %s
                 ORDER BY d.rank
             """, (edition, edition_date))
-            return [dict(r) for r in cur.fetchall()]
+        return [dict(r) for r in cur.fetchall()]
 
 
 def get_today_editions() -> dict[str, list[dict]]:
@@ -190,16 +184,15 @@ def select_top_articles(edition: str, scope: str = "piaui", top: int = 3) -> lis
     score_col = f"final_score_{scope}"
     today = date.today()
 
-    with connect() as conn:
-        with conn.cursor() as cur:
-            # Artigos já despachados hoje
-            cur.execute("""
+    with connect() as conn, conn.cursor() as cur:
+        # Artigos já despachados hoje
+        cur.execute("""
                 SELECT article_id FROM dispatches
                 WHERE edition_date = %s
             """, (today,))
-            already = {row["article_id"] for row in cur.fetchall()}
+        already = {row["article_id"] for row in cur.fetchall()}
 
-            cur.execute(f"""
+        cur.execute(f"""
                 SELECT *
                 FROM articles
                 WHERE (published_at >= %s OR published_at IS NULL)
@@ -209,7 +202,7 @@ def select_top_articles(edition: str, scope: str = "piaui", top: int = 3) -> lis
                 ORDER BY {score_col} DESC, published_at DESC NULLS LAST
                 LIMIT 50
             """, (cutoff,))
-            candidates = [dict(r) for r in cur.fetchall()]
+        candidates = [dict(r) for r in cur.fetchall()]
 
     selected = [a for a in candidates if a["id"] not in already][:top]
     return selected
@@ -235,27 +228,26 @@ def create_dispatch(
 
     # Guard de idempotência: impede duplo envio ao Telegram se n8n e scheduler
     # interno dispararem simultaneamente. Verifica dispatches ativos (não rejeitados).
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
                 SELECT COUNT(*) AS cnt FROM dispatches
                 WHERE edition = %s
                   AND edition_date = %s
                   AND scope = %s
                   AND status NOT IN ('article_rejected', 'card_rejected')
                 """,
-                (edition, today, scope),
+            (edition, today, scope),
+        )
+        if cur.fetchone()["cnt"] > 0:
+            _logger.warning(
+                "Dispatch bloqueado (idempotência): edição '%s' já existe para %s"
+                " scope=%s. Chamada duplicada ignorada.",
+                edition,
+                today,
+                scope,
             )
-            if cur.fetchone()["cnt"] > 0:
-                _logger.warning(
-                    "Dispatch bloqueado (idempotência): edição '%s' já existe para %s"
-                    " scope=%s. Chamada duplicada ignorada.",
-                    edition,
-                    today,
-                    scope,
-                )
-                return []
+            return []
 
     articles = select_top_articles(edition, scope, top)
     if not articles:
@@ -264,17 +256,16 @@ def create_dispatch(
     edition_info = EDITIONS[edition]
     created = []
 
-    with connect() as conn:
-        with conn.cursor() as cur:
-            for rank, art in enumerate(articles, start=1):
-                cur.execute("""
+    with connect() as conn, conn.cursor() as cur:
+        for rank, art in enumerate(articles, start=1):
+            cur.execute("""
                     INSERT INTO dispatches
                     (article_id, edition, edition_date, rank, scope, status, created_at, updated_at)
                     VALUES (%s, %s, %s, %s, %s, 'pending_article', NOW(), NOW())
                     RETURNING id
                 """, (art["id"], edition, today, rank, scope))
-                dispatch_id = cur.fetchone()["id"]
-                created.append({"dispatch_id": dispatch_id, "article": art, "rank": rank})
+            dispatch_id = cur.fetchone()["id"]
+            created.append({"dispatch_id": dispatch_id, "article": art, "rank": rank})
 
     # Envia cabeçalho da edição
     edition_label = edition_info["label"]
@@ -314,7 +305,6 @@ def _send_article_for_approval(dispatch_id: int, art: dict, rank: int, edition_l
 
     score = float(art.get("final_score_piaui") or 0)
     priority = (art.get("priority") or "-").upper()
-    resumo = ai_json.get("resumo_curto") or (art.get("summary") or "")[:200]
     pontos = ai_json.get("pontos_chave") or []
     pontos_txt = "\n".join(f"• {p}" for p in pontos[:3])
     source = art.get("source") or ""
@@ -432,7 +422,7 @@ def generate_card_for_dispatch(
             "card_path": card_path,
         }
     else:
-        msg = f"⚠️ Artigo aprovado! Card não gerado automaticamente."
+        msg = "⚠️ Artigo aprovado! Card não gerado automaticamente."
         if error_msg:
             msg += f"\nErro: `{error_msg}`"
         msg += f"\nDispatch ID: `{dispatch_id}` — gere pelo dashboard."
@@ -539,12 +529,11 @@ def approve_card(dispatch_id: int, user: str = "Editor", notes: str | None = Non
         f"✅ APROVADO para publicação por {user}"
     )
     # Atualiza editorial_status do artigo
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE articles SET editorial_status='ready_to_publish', card_status='approved', updated_at=NOW() WHERE id=%s",
-                (dispatch["article_id"],)
-            )
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE articles SET editorial_status='ready_to_publish', card_status='approved', updated_at=NOW() WHERE id=%s",
+            (dispatch["article_id"],)
+        )
     return {"ok": True, "dispatch_id": dispatch_id, "status": "ready_to_publish"}
 
 
@@ -575,12 +564,11 @@ def reject_card(dispatch_id: int, user: str = "Editor", notes: str | None = None
         dispatch.get("card_tg_message_id"),
         f"❌ CARD REJEITADO por {user}"
     )
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE articles SET editorial_status='card_rejected', card_status='rejected', updated_at=NOW() WHERE id=%s",
-                (dispatch["article_id"],)
-            )
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE articles SET editorial_status='card_rejected', card_status='rejected', updated_at=NOW() WHERE id=%s",
+            (dispatch["article_id"],)
+        )
     return {"ok": True, "dispatch_id": dispatch_id, "status": "card_rejected"}
 
 
@@ -610,12 +598,11 @@ def mark_published(
             update_kwargs["review_notes"] = notes
         update_dispatch(dispatch_id, **update_kwargs)
 
-        with connect() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE articles SET editorial_status='published', updated_at=NOW() WHERE id=%s",
-                    (dispatch["article_id"],),
-                )
+        with connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "UPDATE articles SET editorial_status='published', updated_at=NOW() WHERE id=%s",
+                (dispatch["article_id"],),
+            )
         _try_record_editorial_action(
             action="published",
             actor=user,
@@ -657,14 +644,12 @@ def _edit_article_message(message_id: str | None, status_text: str, user: str) -
         })
     except Exception:
         # Fallback: só remove os botões
-        try:
+        with suppress(Exception):
             _tg("editMessageReplyMarkup", json={
                 "chat_id": TELEGRAM_CHAT_ID,
                 "message_id": int(message_id),
                 "reply_markup": {"inline_keyboard": []},
             })
-        except Exception:
-            pass
 
 
 def _edit_message_remove_buttons(message_id: str | None, new_suffix: str) -> None:
@@ -675,12 +660,10 @@ def _edit_message_remove_buttons(message_id: str | None, new_suffix: str) -> Non
 def _edit_caption_remove_buttons(message_id: str | None, new_caption: str) -> None:
     if not message_id:
         return
-    try:
+    with suppress(Exception):
         _tg("editMessageCaption", json={
             "chat_id": TELEGRAM_CHAT_ID,
             "message_id": int(message_id),
             "caption": new_caption,
             "reply_markup": {"inline_keyboard": []},
         })
-    except Exception:
-        pass

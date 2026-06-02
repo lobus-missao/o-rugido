@@ -6,8 +6,7 @@ from typing import Any
 
 from dateutil import parser as date_parser
 
-from news_radar.core.text_utils import count_terms, extract_money_values, normalize_text
-
+from news_radar.core.text_utils import count_terms, extract_money_values
 
 PUBLIC_ORG_TERMS = [
     "governo", "prefeitura", "câmara", "camara", "assembleia", "ministério", "ministerio",
@@ -370,16 +369,15 @@ def auto_classify() -> int:
 
     from news_radar.core.db import connect
 
-    with connect() as conn:
-        with conn.cursor() as cur:
-            # FOR UPDATE SKIP LOCKED: evita dois rankers calculando o mesmo artigo.
-            cur.execute("""
+    with connect() as conn, conn.cursor() as cur:
+        # FOR UPDATE SKIP LOCKED: evita dois rankers calculando o mesmo artigo.
+        cur.execute("""
                 SELECT id, COALESCE(final_score_piaui, 0) AS best_score
                 FROM articles
                 WHERE priority IS NULL
                 FOR UPDATE SKIP LOCKED
             """)
-            rows = [dict(r) for r in cur.fetchall()]
+        rows = [dict(r) for r in cur.fetchall()]
 
     if not rows:
         return 0
@@ -389,15 +387,14 @@ def auto_classify() -> int:
         for row in rows
     ]
 
-    with connect() as conn:
-        with conn.cursor() as cur:
-            psycopg2.extras.execute_batch(
-                cur,
-                # Double-check priority IS NULL no UPDATE para evitar race condition
-                "UPDATE articles SET priority = %s WHERE id = %s AND priority IS NULL",
-                batch,
-                page_size=200,
-            )
+    with connect() as conn, conn.cursor() as cur:
+        psycopg2.extras.execute_batch(
+            cur,
+            # Double-check priority IS NULL no UPDATE para evitar race condition
+            "UPDATE articles SET priority = %s WHERE id = %s AND priority IS NULL",
+            batch,
+            page_size=200,
+        )
 
     return len(batch)
 
@@ -416,13 +413,12 @@ def rank_all() -> int:
 
     init_db()
 
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, title, summary, source_scope, source_trust,"
-                " published_at, ai_score FROM articles"
-            )
-            rows = [dict(r) for r in cur.fetchall()]
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, title, summary, source_scope, source_trust,"
+            " published_at, ai_score FROM articles"
+        )
+        rows = [dict(r) for r in cur.fetchall()]
 
     batch = []
     for article in rows:
@@ -435,20 +431,19 @@ def rank_all() -> int:
             article["id"],
         ))
 
-    with connect() as conn:
-        with conn.cursor() as cur:
-            psycopg2.extras.execute_batch(
-                cur,
-                """
+    with connect() as conn, conn.cursor() as cur:
+        psycopg2.extras.execute_batch(
+            cur,
+            """
                 UPDATE articles SET
                     auto_score_piaui   = %s,
                     final_score_piaui  = %s,
                     score_reasons_json = %s
                 WHERE id = %s
                 """,
-                batch,
-                page_size=100,
-            )
+            batch,
+            page_size=100,
+        )
 
     # Classifica artigos sem priority usando scores automáticos
     auto_classify()
