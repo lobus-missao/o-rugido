@@ -11,7 +11,8 @@ NÃO sobrescreve ai_json nem campos de artigos com IA real.
 Uso: preencher priority/category para artigos que ainda não passaram pela IA.
 """
 from __future__ import annotations
-from news_radar.core.text_utils import count_terms, normalize_text
+
+from news_radar.core.text_utils import count_terms
 
 # ── Listas de termos por dimensão ────────────────────────────────────────────
 
@@ -151,7 +152,7 @@ EDITORIA_RULES: list[tuple[str, list[str]]] = [
         "condenado", "absolvido", "ação civil", "acao civil",
         "ministério público", "ministerio publico", "mppi", "mpf",
     ]),
-    ("Contas públicas", DINHEIRO_PUBLICO_TERMS + [
+    ("Contas públicas", [*DINHEIRO_PUBLICO_TERMS,
         "transparência", "transparencia", "fiscalização", "fiscalizacao",
     ]),
     ("Saúde", [
@@ -171,7 +172,7 @@ EDITORIA_RULES: list[tuple[str, list[str]]] = [
         "saneamento", "água", "agua", "esgoto",
         "energia elétrica", "energia eletrica",
     ]),
-    ("Governos e política", POLITICA_TERMS + [
+    ("Governos e política", [*POLITICA_TERMS,
         "governo federal", "governo estadual", "governo municipal",
         "secretaria", "secretário", "secretario",
     ]),
@@ -197,7 +198,7 @@ def _score(text: str, terms: list[str], max_score: float = 10.0, per_hit: float 
 
 
 def classify_gravidade(text: str) -> float:
-    """0–10: severidade do fato (crime, crise, risco coletivo)."""
+    """0-10: severidade do fato (crime, crise, risco coletivo)."""
     grave = _score(text, CRIME_GRAVE_TERMS, 10, 3.5)
     org = _score(text, CRIME_ORG_TERMS, 8, 2.5)
     crise = _score(text, CRISE_TERMS, 8, 3.0)
@@ -206,14 +207,14 @@ def classify_gravidade(text: str) -> float:
 
 
 def classify_risco_investigativo(text: str) -> float:
-    """0–10: potencial de irregularidade, desvio, investigação."""
+    """0-10: potencial de irregularidade, desvio, investigação."""
     inv = _score(text, INVESTIGATIVO_TERMS, 10, 2.0)
     nep = _score(text, NEPOTISM_PATTERNS, 8, 4.0)
     return min(max(inv, nep), 10.0)
 
 
 def classify_urgencia(text: str, recency_hours: float = 48.0) -> float:
-    """0–10: urgência do fato (breaking, decisão imediata, crise em curso)."""
+    """0-10: urgência do fato (breaking, decisão imediata, crise em curso)."""
     content_urgency = _score(text, URGENCIA_TERMS, 8, 2.0)
     # Penaliza artigos velhos mesmo que o texto seja urgente
     if recency_hours <= 6:
@@ -228,17 +229,17 @@ def classify_urgencia(text: str, recency_hours: float = 48.0) -> float:
 
 
 def classify_impacto_social(text: str) -> float:
-    """0–10: quanto afeta serviços essenciais da população."""
+    """0-10: quanto afeta serviços essenciais da população."""
     return _score(text, IMPACTO_SOCIAL_TERMS, 10, 2.5)
 
 
 def classify_dinheiro_publico(text: str) -> float:
-    """0–10: envolve verba, contrato, licitação, desvio."""
+    """0-10: envolve verba, contrato, licitação, desvio."""
     return _score(text, DINHEIRO_PUBLICO_TERMS, 10, 1.5)
 
 
 def classify_relevancia_politica(text: str) -> float:
-    """0–10: envolve mandatários, partidos, eleições."""
+    """0-10: envolve mandatários, partidos, eleições."""
     return _score(text, POLITICA_TERMS, 10, 2.0)
 
 

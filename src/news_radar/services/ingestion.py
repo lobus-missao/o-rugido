@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
 import logging
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 import feedparser
 from dateutil import parser as date_parser
@@ -177,7 +176,11 @@ def _try_update_source_status(
     Não quebra a coleta se a tabela não existir ou a fonte não estiver cadastrada.
     """
     try:
-        from news_radar.repositories.sources import get_source_by_name, mark_source_error, mark_source_success
+        from news_radar.repositories.sources import (
+            get_source_by_name,
+            mark_source_error,
+            mark_source_success,
+        )
 
         src = get_source_by_name(source_name)
         if src is None:

@@ -7,10 +7,7 @@ from __future__ import annotations
 
 import os
 
-import pytest
-
 from news_radar import scheduler as sched_mod
-
 
 # ---------------------------------------------------------------------------
 # _is_enabled() — lógica de ativação por env var

@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Iterator
 
 import psycopg2
 import psycopg2.extras
 import psycopg2.sql
 
 from .config import DATABASE_URL, ensure_dirs
-
 
 SCHEMA_SQL = [
     """
@@ -239,31 +238,30 @@ def connect() -> Iterator[psycopg2.extensions.connection]:
 
 
 def init_db() -> None:
-    with connect() as conn:
-        with conn.cursor() as cur:
-            for statement in SCHEMA_SQL:
-                cur.execute(statement)
+    with connect() as conn, conn.cursor() as cur:
+        for statement in SCHEMA_SQL:
+            cur.execute(statement)
 
-            # Tabela de controle de versão de migrations (Fase 9)
-            cur.execute("""
+        # Tabela de controle de versão de migrations (Fase 9)
+        cur.execute("""
                 CREATE TABLE IF NOT EXISTS schema_migrations (
                     id TEXT PRIMARY KEY,
                     applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """)
 
-            # Aplica apenas migrations ainda não registradas
-            cur.execute("SELECT id FROM schema_migrations")
-            applied = {row["id"] for row in cur.fetchall()}
-            for migration_id, stmt in MIGRATION_SQL.items():
-                if migration_id not in applied:
-                    cur.execute(stmt)
-                    cur.execute(
-                        "INSERT INTO schema_migrations (id, applied_at) VALUES (%s, NOW())",
-                        (migration_id,),
-                    )
+        # Aplica apenas migrations ainda não registradas
+        cur.execute("SELECT id FROM schema_migrations")
+        applied = {row["id"] for row in cur.fetchall()}
+        for migration_id, stmt in MIGRATION_SQL.items():
+            if migration_id not in applied:
+                cur.execute(stmt)
+                cur.execute(
+                    "INSERT INTO schema_migrations (id, applied_at) VALUES (%s, NOW())",
+                    (migration_id,),
+                )
 
-            _ensure_datetime_columns(cur)
+        _ensure_datetime_columns(cur)
 
 
 def _ensure_datetime_columns(cur) -> None:

@@ -6,7 +6,6 @@ import re
 import unicodedata
 from urllib.parse import parse_qs, unquote, urlparse
 
-
 STOPWORDS_PT = {
     "a", "o", "as", "os", "um", "uma", "uns", "umas", "de", "da", "do", "das", "dos",
     "em", "no", "na", "nos", "nas", "por", "para", "com", "sem", "sobre", "entre",
@@ -77,7 +76,7 @@ def canonicalize_url(url: str | None) -> str:
     parsed = urlparse(url)
     query = parse_qs(parsed.query)
     for key in ("url", "u"):
-        if key in query and query[key]:
+        if query.get(key):
             candidate = unquote(query[key][0])
             if candidate.startswith("http"):
                 url = candidate

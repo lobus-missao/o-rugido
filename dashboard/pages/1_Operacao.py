@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
-
 from components import fmt_dt, sidebar_controls
 
 from news_radar.repositories.dashboard_queries import (

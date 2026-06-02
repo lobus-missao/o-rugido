@@ -22,28 +22,27 @@ def record_editorial_action(
     Campos obrigatórios: action, actor.
     article_id e dispatch_id são opcionais para eventos de sistema sem alvo específico.
     """
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
                 INSERT INTO editorial_actions
                     (article_id, dispatch_id, action, actor,
                      from_status, to_status, notes, metadata)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
-                (
-                    article_id,
-                    dispatch_id,
-                    action,
-                    actor,
-                    from_status,
-                    to_status,
-                    notes,
-                    json_dumps(metadata),
-                ),
-            )
-            return cur.fetchone()["id"]
+            (
+                article_id,
+                dispatch_id,
+                action,
+                actor,
+                from_status,
+                to_status,
+                notes,
+                json_dumps(metadata),
+            ),
+        )
+        return cur.fetchone()["id"]
 
 
 def list_editorial_actions_for_target(
@@ -65,15 +64,14 @@ def list_editorial_actions_for_target(
         params.append(dispatch_id)
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     params.append(limit)
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                f"""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            f"""
                 SELECT * FROM editorial_actions
                 {where}
                 ORDER BY created_at DESC
                 LIMIT %s
                 """,
-                params,
-            )
-            return [dict(row) for row in cur.fetchall()]
+            params,
+        )
+        return [dict(row) for row in cur.fetchall()]

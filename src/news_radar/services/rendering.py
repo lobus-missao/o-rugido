@@ -243,7 +243,7 @@ def _chromium_executable() -> str | None:
 def is_playwright_available() -> bool:
     """Return True if Playwright + Chromium can launch successfully."""
     try:
-        from playwright.sync_api import sync_playwright  # noqa: PLC0415
+        from playwright.sync_api import sync_playwright
 
         exec_path = _chromium_executable()
         launch_kwargs = {"executable_path": exec_path} if exec_path else {}
@@ -287,15 +287,14 @@ def render_cards(
     template = template_path.read_text(encoding="utf-8")
 
     if article_ids:
-        from news_radar.core.db import connect  # noqa: PLC0415
+        from news_radar.core.db import connect
 
-        with connect() as conn:
-            with conn.cursor() as cur:
-                ph = ",".join(["%s"] * len(article_ids))
-                cur.execute(
-                    f"SELECT * FROM articles WHERE id IN ({ph})", article_ids
-                )
-                articles = [dict(r) for r in cur.fetchall()]
+        with connect() as conn, conn.cursor() as cur:
+            ph = ",".join(["%s"] * len(article_ids))
+            cur.execute(
+                f"SELECT * FROM articles WHERE id IN ({ph})", article_ids
+            )
+            articles = [dict(r) for r in cur.fetchall()]
     else:
         articles = articles_pending_card(scope=scope, limit=limit)
 
@@ -317,7 +316,7 @@ def render_cards(
     generated: list[dict[str, Any]] = []
 
     try:
-        from playwright.sync_api import sync_playwright  # noqa: PLC0415
+        from playwright.sync_api import sync_playwright
 
         exec_path = _chromium_executable()
         launch_kwargs = {"executable_path": exec_path} if exec_path else {}
@@ -351,7 +350,7 @@ def render_cards(
         logger.warning(
             "Playwright indisponivel — gerado apenas HTML: %s", exc
         )
-        for article, html, html_path in rendered:
+        for article, _html, html_path in rendered:
             update_card_status(
                 article["id"],
                 status="pending",
@@ -384,10 +383,9 @@ def render_single_card(
     if not template_path.exists():
         raise FileNotFoundError(f"Template nao encontrado: {template_path}")
 
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM articles WHERE id = %s", (article_id,))
-            row = cur.fetchone()
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute("SELECT * FROM articles WHERE id = %s", (article_id,))
+        row = cur.fetchone()
 
     if row is None:
         raise LookupError(f"Artigo {article_id} não encontrado")

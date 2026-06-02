@@ -44,42 +44,39 @@ def top_articles(
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     params.append(limit)
 
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                f"""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            f"""
                 SELECT *
                 FROM articles
                 {where}
                 ORDER BY {column} DESC, published_at DESC NULLS LAST
                 LIMIT %s
                 """,
-                params,
-            )
-            return [dict(row) for row in cur.fetchall()]
+            params,
+        )
+        return [dict(row) for row in cur.fetchall()]
 
 
 def recent_articles(limit: int = 100) -> list[dict]:
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
                 SELECT *
                 FROM articles
                 ORDER BY COALESCE(published_at, created_at) DESC
                 LIMIT %s
                 """,
-                (limit,),
-            )
-            return [dict(row) for row in cur.fetchall()]
+            (limit,),
+        )
+        return [dict(row) for row in cur.fetchall()]
 
 
 def articles_pending_card(scope: Scope = "piaui", limit: int = 5) -> list[dict]:
     column = SCORE_COLUMN[scope]
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                f"""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            f"""
                 SELECT *
                 FROM articles
                 WHERE priority IN ('alta', 'critica')
@@ -88,9 +85,9 @@ def articles_pending_card(scope: Scope = "piaui", limit: int = 5) -> list[dict]:
                 ORDER BY {column} DESC
                 LIMIT %s
                 """,
-                (limit,),
-            )
-            return [dict(row) for row in cur.fetchall()]
+            (limit,),
+        )
+        return [dict(row) for row in cur.fetchall()]
 
 
 def update_card_status(
@@ -100,10 +97,9 @@ def update_card_status(
     html_path: str | None = None,
 ) -> None:
     from news_radar.core.db import utc_now
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
                 UPDATE articles
                 SET card_status = %s,
                     card_path = COALESCE(%s, card_path),
@@ -111,37 +107,36 @@ def update_card_status(
                     updated_at = %s
                 WHERE id = %s
                 """,
-                (status, card_path, html_path, utc_now(), article_id),
-            )
+            (status, card_path, html_path, utc_now(), article_id),
+        )
 
 
 def stats() -> dict:
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) AS total FROM articles")
-            total = cur.fetchone()["total"]
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) AS total FROM articles")
+        total = cur.fetchone()["total"]
 
-            cur.execute("SELECT COUNT(*) AS total FROM articles WHERE ai_score IS NOT NULL")
-            with_ai = cur.fetchone()["total"]
+        cur.execute("SELECT COUNT(*) AS total FROM articles WHERE ai_score IS NOT NULL")
+        with_ai = cur.fetchone()["total"]
 
-            cur.execute(
-                """
+        cur.execute(
+            """
                 SELECT status, COUNT(*) AS total
                 FROM ai_batches
                 GROUP BY status
                 """
-            )
-            batch_totals = cur.fetchall()
+        )
+        batch_totals = cur.fetchall()
 
-            cur.execute(
-                """
+        cur.execute(
+            """
                 SELECT source, status, collected_count, error, finished_at
                 FROM feed_runs
                 ORDER BY id DESC
                 LIMIT 30
                 """
-            )
-            feed_runs = cur.fetchall()
+        )
+        feed_runs = cur.fetchall()
 
     return {
         "total_articles": total,

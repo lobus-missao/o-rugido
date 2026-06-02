@@ -45,14 +45,13 @@ def test_init_db_smoke_against_configured_postgres(monkeypatch):
     monkeypatch.setattr(db, "DATABASE_URL", test_database_url)
     db.init_db()
 
-    with db.connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
+    with db.connect() as conn, conn.cursor() as cur:
+        cur.execute("""
                 SELECT table_name
                 FROM information_schema.tables
                 WHERE table_schema = 'public'
                   AND table_name IN ('articles', 'ai_batches', 'dispatches')
             """)
-            tables = {row["table_name"] for row in cur.fetchall()}
+        tables = {row["table_name"] for row in cur.fetchall()}
 
     assert {"articles", "ai_batches", "dispatches"} <= tables
