@@ -1,7 +1,7 @@
 """
 Testes do scheduler interno opcional (APScheduler).
 
-Ref: specs/12-n8n-decoupling.md — Etapa 1.1 e 1.2
+Ref: docs/specs/12-n8n-decoupling.md — Etapa 1.1 e 1.2
 """
 from __future__ import annotations
 
@@ -58,43 +58,30 @@ def test_scheduler_enabled_when_yes(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_create_scheduler_registers_four_jobs():
-    """Scheduler criado tem exatamente 4 jobs: collect_and_rank + 3 dispatches."""
+def test_create_scheduler_registers_two_jobs():
     sched = sched_mod.create_scheduler()
     job_ids = {j.id for j in sched.get_jobs()}
 
-    assert "collect_and_rank" in job_ids
-    assert "dispatch_morning" in job_ids
-    assert "dispatch_noon" in job_ids
-    assert "dispatch_evening" in job_ids
-    assert len(job_ids) == 4
+    assert job_ids == {"collect_and_rank", "dispatch_default"}
 
 
 def test_create_scheduler_collect_job_is_interval():
-    """Job collect_and_rank usa trigger 'interval' de 30 minutos."""
     sched = sched_mod.create_scheduler()
     job = next(j for j in sched.get_jobs() if j.id == "collect_and_rank")
-    # APScheduler 3.x: trigger.__class__.__name__ == 'IntervalTrigger'
     assert "interval" in type(job.trigger).__name__.lower()
 
 
-def test_create_scheduler_dispatch_jobs_are_cron():
-    """Jobs de dispatch usam trigger 'cron'."""
+def test_create_scheduler_dispatch_job_is_cron():
     sched = sched_mod.create_scheduler()
-    for edition in ("morning", "noon", "evening"):
-        job = next(j for j in sched.get_jobs() if j.id == f"dispatch_{edition}")
-        assert "cron" in type(job.trigger).__name__.lower(), (
-            f"dispatch_{edition} deveria ter trigger cron"
-        )
+    job = next(j for j in sched.get_jobs() if j.id == "dispatch_default")
+    assert "cron" in type(job.trigger).__name__.lower()
 
 
 def test_create_scheduler_respects_scope_env(monkeypatch):
-    """Scope do dispatch é configurável via NEWS_RADAR_DISPATCH_SCOPE."""
-    monkeypatch.setenv("NEWS_RADAR_DISPATCH_SCOPE", "brasil")
+    monkeypatch.setenv("NEWS_RADAR_DISPATCH_SCOPE", "piaui")
     sched = sched_mod.create_scheduler()
-    # Verificar que os jobs foram criados (scope é passado como arg, não exposto diretamente)
     job_ids = {j.id for j in sched.get_jobs()}
-    assert "dispatch_morning" in job_ids
+    assert "dispatch_default" in job_ids
 
 
 # ---------------------------------------------------------------------------

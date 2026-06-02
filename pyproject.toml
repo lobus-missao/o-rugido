@@ -5,8 +5,76 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "news-radar-rss"
 version = "0.1.0"
-description = "Monitoramento RSS com ranking Brasil/Piauí/Teresina e lotes para IA de navegador"
+description = "Pipeline editorial Piauí — RSS, ranking, aprovação humana e publicação em Telegram/Instagram."
 requires-python = ">=3.10"
+dependencies = [
+    "feedparser==6.0.11",
+    "python-dateutil==2.9.0.post0",
+    "PyYAML==6.0.2",
+    "beautifulsoup4==4.12.3",
+    "requests==2.32.3",
+    "psycopg2-binary==2.9.10",
+    "python-dotenv==1.0.1",
+    "streamlit==1.40.2",
+    "pandas==2.2.3",
+    "playwright==1.49.0",
+    "flask==3.1.1",
+    "pydantic>=2.0,<3.0",
+    "pycryptodome==3.21.0",
+    "APScheduler>=3.10,<4.0",
+    "trafilatura>=1.12,<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+news-radar = "news_radar.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-ra", "--strict-markers"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = [".venv", "data", "n8n", "__pycache__"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "SIM", # simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501",  # line too long — handled by formatter
+    "B008",  # function call in default arg (FastAPI/Pydantic pattern)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["news_radar"]
+
+[tool.mypy]
+python_version = "3.10"
+strict_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+exclude = ["data/", "n8n/", ".venv/"]
+
+[[tool.mypy.overrides]]
+module = ["feedparser.*", "trafilatura.*", "apscheduler.*"]
+ignore_missing_imports = true

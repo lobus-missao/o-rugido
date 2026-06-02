@@ -4,7 +4,7 @@ Testes de idempotência para create_dispatch().
 Verifica que chamadas repetidas para a mesma edição/data/scope não resultam
 em duplicação de dispatches ou envios duplicados ao Telegram.
 
-Ref: specs/12-n8n-decoupling.md — "Prevenção de duplo disparo"
+Ref: docs/specs/12-n8n-decoupling.md — "Prevenção de duplo disparo"
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from contextlib import contextmanager
 
 import pytest
 
-from news_radar import dispatch
+from news_radar.services import editorial as dispatch
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ def test_guard_blocks_when_active_dispatch_exists(monkeypatch):
         lambda *a, **kw: select_called.append(1) or [],
     )
 
-    result = dispatch.create_dispatch("morning", scope="piaui", top=3, dry_run=True)
+    result = dispatch.create_dispatch("default", scope="piaui", top=3, dry_run=True)
 
     assert result == [], "Guard deve retornar [] quando edição ativa já existe"
     assert select_called == [], "select_top_articles não deve ser chamada quando guard bloqueia"
@@ -93,7 +93,7 @@ def test_guard_allows_when_no_active_dispatches(monkeypatch):
         lambda *a, **kw: select_called.append(1) or [],
     )
 
-    dispatch.create_dispatch("morning", scope="piaui", top=3, dry_run=True)
+    dispatch.create_dispatch("default", scope="piaui", top=3, dry_run=True)
 
     assert select_called, "select_top_articles deve ser chamada quando guard não bloqueia"
 
@@ -112,7 +112,7 @@ def test_guard_allows_when_all_dispatches_rejected(monkeypatch):
         lambda *a, **kw: select_called.append(1) or [],
     )
 
-    dispatch.create_dispatch("morning", scope="piaui", top=3, dry_run=True)
+    dispatch.create_dispatch("default", scope="piaui", top=3, dry_run=True)
 
     assert select_called, "Nova edição deve ser permitida quando todos os dispatches foram rejeitados"
 
@@ -139,8 +139,8 @@ def test_guard_logs_warning_when_blocked(monkeypatch, caplog):
     monkeypatch.setattr(dispatch, "connect", _mock_connect(cnt=1))
     monkeypatch.setattr(dispatch, "select_top_articles", lambda *a, **kw: [])
 
-    with caplog.at_level(logging.WARNING, logger="news_radar.dispatch"):
-        result = dispatch.create_dispatch("noon", scope="piaui", top=3, dry_run=True)
+    with caplog.at_level(logging.WARNING, logger="news_radar.services.editorial"):
+        result = dispatch.create_dispatch("default", scope="piaui", top=3, dry_run=True)
 
     assert result == []
     warning_messages = [r.message for r in caplog.records if r.levelno >= logging.WARNING]
@@ -166,7 +166,7 @@ def test_guard_scope_isolation(monkeypatch):
         lambda *a, **kw: select_called.append(1) or [],
     )
 
-    dispatch.create_dispatch("morning", scope="brasil", top=3, dry_run=True)
+    dispatch.create_dispatch("default", scope="brasil", top=3, dry_run=True)
 
     assert select_called, "Edição com scope diferente deve ser processada"
 
@@ -176,7 +176,7 @@ def test_guard_returns_empty_list_type(monkeypatch):
     monkeypatch.setattr(dispatch, "connect", _mock_connect(cnt=5))
     monkeypatch.setattr(dispatch, "select_top_articles", lambda *a, **kw: [])
 
-    result = dispatch.create_dispatch("evening", scope="piaui", top=3, dry_run=True)
+    result = dispatch.create_dispatch("default", scope="piaui", top=3, dry_run=True)
 
     assert isinstance(result, list), "create_dispatch deve retornar list mesmo quando bloqueado"
     assert len(result) == 0

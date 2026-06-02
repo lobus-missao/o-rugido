@@ -1,6 +1,5 @@
 services:
 
-  # ── Banco de dados ──────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     environment:
@@ -16,7 +15,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Python CLI + API ────────────────────────────────────────────────────────
   app:
     build: .
     command: python api_server.py
@@ -25,75 +23,75 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/news_radar
-      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
     volumes:
       - ./data:/app/data
       - ./configs:/app/configs
-      - ./config:/app/config
-      - ./prompts:/app/prompts
       - ./templates:/app/templates
       - ./src:/app/src
-      - ./pages:/app/pages
       - ./api_server.py:/app/api_server.py
     ports:
       - "8888:8888"
     restart: unless-stopped
 
-  # ── Dashboard Streamlit ─────────────────────────────────────────────────────
   dashboard:
     build: .
-    command: streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0 --server.fileWatcherType poll
+    command: streamlit run dashboard/app.py --server.port 8501 --server.address 0.0.0.0 --server.fileWatcherType poll
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/news_radar
-      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
     volumes:
       - ./data:/app/data
       - ./configs:/app/configs
-      - ./config:/app/config
-      - ./prompts:/app/prompts
       - ./templates:/app/templates
       - ./src:/app/src
-      - ./pages:/app/pages
-      - ./dashboard.py:/app/dashboard.py
+      - ./dashboard:/app/dashboard
     ports:
       - "8501:8501"
     restart: unless-stopped
 
-  # ── n8n ─────────────────────────────────────────────────────────────────────
   n8n:
     image: n8nio/n8n:latest
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      DB_TYPE: postgresdb
-      DB_POSTGRESDB_HOST: postgres
-      DB_POSTGRESDB_DATABASE: n8n
-      DB_POSTGRESDB_USER: ${POSTGRES_USER}
-      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
       N8N_BASIC_AUTH_ACTIVE: "true"
       N8N_BASIC_AUTH_USER: ${N8N_USER}
       N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
-      # URL pública para webhooks (ex: Telegram Trigger)
-      WEBHOOK_URL: https://${DOMAIN}/n8n/
-      N8N_PATH: /n8n/
-      # Acesso à API do news-radar via rede Docker interna
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      N8N_EDITOR_BASE_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      N8N_PROTOCOL: https
+      N8N_HOST: talk-responded-marie-colony.trycloudflare.com
       NEWS_RADAR_API_URL: http://app:8888
+      NEWS_RADAR_PUBLIC_URL: ${NEWS_RADAR_PUBLIC_URL:-}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+    ports:
+      - "5678:5678"
     volumes:
       - n8n_data:/home/node/.n8n
     restart: unless-stopped
 
-  # ── Caddy — HTTPS automático (Let's Encrypt) ────────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://app:8888
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  cloudflared-n8n:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://n8n:5678
+    depends_on:
+      - n8n
+    restart: unless-stopped
+
   caddy:
     image: caddy:2-alpine
+    profiles: ["prod"]
     depends_on:
       - n8n
       - dashboard

@@ -84,7 +84,7 @@ python -m news_radar.cli rank
 python api_server.py
 
 # Terminal 2 — Dashboard Streamlit
-streamlit run dashboard.py --server.port 8501
+streamlit run dashboard/app.py --server.port 8501
 ```
 
 ---
@@ -217,7 +217,7 @@ docker build --network=host .
 
 # Verificar se Playwright funciona no container
 docker exec news-radar-app-1 python -c "
-from news_radar.card_renderer import is_playwright_available
+from news_radar.services.rendering import is_playwright_available
 print('Playwright OK:', is_playwright_available())
 "
 ```

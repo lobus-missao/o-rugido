@@ -19,9 +19,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from news_radar.config import load_feeds_config
-from news_radar.db import init_db
-from news_radar.sources import upsert_source
+from news_radar.services.feeds import load_feeds_config
+from news_radar.core.db import init_db
+from news_radar.repositories.sources import upsert_source
 
 
 def seed_sources(dry_run: bool = False) -> dict:
@@ -51,7 +51,7 @@ def seed_sources(dry_run: bool = False) -> dict:
             name=name,
             url=url,
             source_type="rss",
-            scope=feed.get("scope", "brasil"),
+            scope=feed.get("scope", "piaui"),
             trust=float(feed.get("trust", 0.5)),
             enabled=bool(feed.get("enabled", True)),
         )
