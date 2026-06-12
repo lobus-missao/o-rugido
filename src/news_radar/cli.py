@@ -108,8 +108,7 @@ def cmd_cleanup(args) -> None:
                 DELETE FROM articles
                 WHERE published_at < %s
                   AND card_status NOT IN ('approved')
-                  AND ai_score IS NULL
-                """,
+""",
             (cutoff_articles,),
         )
         deleted_articles = cur.rowcount

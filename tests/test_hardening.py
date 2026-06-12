@@ -31,13 +31,13 @@ class TestMigrationSQL:
         assert any("card_html_path" in k for k in keys), "Falta migration Fase 7"
         assert any("review_notes" in k for k in keys), "Falta migration Fase 8"
 
-    def test_migration_sql_drop_column_apenas_em_migrations_v11(self):
-        """DROP COLUMN é permitido apenas nas migrations v11 (corte de escopo Brasil/Teresina)."""
+    def test_migration_sql_drop_column_apenas_em_migrations_de_corte(self):
+        """DROP COLUMN é permitido em v11_* (corte Brasil/Teresina) e v14_* (corte IA)."""
         from news_radar.core.db import MIGRATION_SQL
         for key, stmt in MIGRATION_SQL.items():
             if "DROP COLUMN" in stmt.upper():
-                assert key.startswith("v11_"), (
-                    f"Migration '{key}' contém DROP COLUMN — só permitido em v11_*"
+                assert key.startswith(("v11_", "v14_")), (
+                    f"Migration '{key}' contém DROP COLUMN — só permitido em v11_*/v14_*"
                 )
 
     def test_migration_sql_drop_table_apenas_em_v12(self):

@@ -242,8 +242,8 @@ def test_approve_article_chama_try_record(monkeypatch):
 
     dispatch_module.approve_article(1, user="Revisor", generate_card=False)
 
-    assert any(r[0] == "approve_article" for r in recorded), (
-        "approve_article() deve chamar _try_record_editorial_action com action='approve_article'"
+    assert any(r[0] == "approve_dispatch" for r in recorded), (
+        "approve_article() deve chamar _try_record_editorial_action com action='approve_dispatch'"
     )
     assert any(r[1] == "Revisor" for r in recorded), (
         "actor deve ser o usuário passado para approve_article()"

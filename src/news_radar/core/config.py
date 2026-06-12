@@ -24,6 +24,11 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
 N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "")
 
+SEARXNG_URL = os.getenv("SEARXNG_URL", "http://searxng:8080").rstrip("/")
+
+# URL pública da API — usada nos botões "Editar" do Telegram
+NEWS_RADAR_PUBLIC_URL = os.getenv("NEWS_RADAR_PUBLIC_URL", "").rstrip("/")
+
 
 def ensure_dirs() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
