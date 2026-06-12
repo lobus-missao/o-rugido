@@ -40,7 +40,7 @@ pip install -e .
 PostgreSQL via Docker:
 
 ```powershell
-docker compose -f docker-compose.dev.yml up -d
+docker compose up -d postgres
 ```
 
 Aplicar schema:

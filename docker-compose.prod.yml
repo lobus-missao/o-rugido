@@ -1,0 +1,94 @@
+services:
+
+  app:
+    build: .
+    container_name: news-radar-app
+    command: >
+      gunicorn -w 4 -b 0.0.0.0:8888
+      --access-logfile -
+      --error-logfile -
+      --timeout 120
+      api_server:app
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
+      NEWS_RADAR_PUBLIC_URL: ${NEWS_RADAR_PUBLIC_URL:-}
+      SEARXNG_URL: http://searxng:8080
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8888/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  dashboard:
+    build: .
+    container_name: news-radar-dashboard
+    command: >
+      streamlit run dashboard/app.py
+      --server.port 8501
+      --server.address 0.0.0.0
+      --server.fileWatcherType none
+      --browser.gatherUsageStats false
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health').read()\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: news-radar-searxng
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+      INSTANCE_NAME: news-radar
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+
+networks:
+  default:
+    name: missao-network
+    external: true

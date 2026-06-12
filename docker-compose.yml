@@ -26,6 +26,8 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
+      NEWS_RADAR_PUBLIC_URL: ${NEWS_RADAR_PUBLIC_URL:-}
+      SEARXNG_URL: http://searxng:8080
     volumes:
       - ./data:/app/data
       - ./configs:/app/configs
@@ -65,7 +67,7 @@ services:
       WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
       N8N_EDITOR_BASE_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
       N8N_PROTOCOL: https
-      N8N_HOST: talk-responded-marie-colony.trycloudflare.com
+      N8N_HOST: ${N8N_HOST:-localhost}
       NEWS_RADAR_API_URL: http://app:8888
       NEWS_RADAR_PUBLIC_URL: ${NEWS_RADAR_PUBLIC_URL:-}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
@@ -74,6 +76,27 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     restart: unless-stopped
+
+  searxng:
+    image: searxng/searxng:latest
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+      INSTANCE_NAME: news-radar
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -89,25 +112,6 @@ services:
       - n8n
     restart: unless-stopped
 
-  caddy:
-    image: caddy:2-alpine
-    profiles: ["prod"]
-    depends_on:
-      - n8n
-      - dashboard
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    environment:
-      DOMAIN: ${DOMAIN}
-    restart: unless-stopped
-
 volumes:
   pgdata:
   n8n_data:
-  caddy_data:
-  caddy_config:

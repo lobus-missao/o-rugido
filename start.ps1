@@ -12,7 +12,7 @@ Write-Host "=== News Radar RSS — Startup (dev local) ===" -ForegroundColor Cya
 Write-Host "[1/5] PostgreSQL..." -ForegroundColor Yellow
 $pgRunning = docker ps --filter "name=news_radar_rss-postgres-1" --filter "status=running" -q 2>$null
 if (-not $pgRunning) {
-    docker compose -f "$ROOT\docker-compose.dev.yml" up -d
+    docker compose -f "$ROOT\docker-compose.yml" up -d postgres
     Start-Sleep 3
     Write-Host "      OK" -ForegroundColor Green
 } else {

@@ -1,0 +1,38 @@
+use_default_settings: true
+
+general:
+  instance_name: "News Radar - Busca de imagens"
+
+server:
+  secret_key: "newsradar-local-change-in-prod"
+  limiter: false
+  image_proxy: false
+  method: "GET"
+  default_http_headers:
+    X-Content-Type-Options: nosniff
+    X-Download-Options: noopen
+    X-Robots-Tag: noindex, nofollow
+    Referrer-Policy: no-referrer
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "pt-BR"
+  formats:
+    - html
+    - json
+
+ui:
+  static_use_hash: true
+
+engines:
+  - name: google images
+    disabled: false
+  - name: bing images
+    disabled: false
+  - name: duckduckgo images
+    disabled: false
+  - name: qwant images
+    disabled: false
+  - name: brave.images
+    disabled: false
