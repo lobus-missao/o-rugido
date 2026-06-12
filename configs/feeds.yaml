@@ -1,4 +1,5 @@
 feeds:
+# ── Nacionais (rede de segurança — só rankeiam se citarem PI/Teresina) ─────
 - name: G1
   url: https://g1.globo.com/rss/g1/
   scope: brasil
@@ -29,101 +30,6 @@ feeds:
   scope: brasil
   trust: 0.84
   enabled: true
-- name: UOL Noticias
-  url: https://rss.uol.com.br/feed/noticias.xml
-  scope: brasil
-  trust: 0.82
-  enabled: true
-- name: CNN Brasil
-  url: https://www.cnnbrasil.com.br/feed/
-  scope: brasil
-  trust: 0.8
-  enabled: true
-- name: BBC Brasil
-  url: https://feeds.bbci.co.uk/portuguese/rss.xml
-  scope: brasil
-  trust: 0.88
-  enabled: true
-- name: Veja
-  url: https://veja.abril.com.br/feed/
-  scope: brasil
-  trust: 0.76
-  enabled: true
-- name: Metropoles
-  url: https://www.metropoles.com/feed/
-  scope: brasil
-  trust: 0.76
-  enabled: true
-- name: Poder360
-  url: https://www.poder360.com.br/feed/
-  scope: brasil
-  trust: 0.82
-  enabled: true
-- name: Congresso em Foco
-  url: https://congressoemfoco.uol.com.br/feed/
-  scope: brasil
-  trust: 0.8
-  enabled: true
-- name: CartaCapital
-  url: https://www.cartacapital.com.br/feed/
-  scope: brasil
-  trust: 0.74
-  enabled: true
-- name: The Intercept Brasil
-  url: https://theintercept.com/brasil/feed/
-  scope: brasil
-  trust: 0.78
-  enabled: true
-- name: Agencia Publica
-  url: https://apublica.org/feed/
-  scope: brasil
-  trust: 0.82
-  enabled: true
-- name: Piaui Magazine
-  url: https://piaui.folha.uol.com.br/feed/
-  scope: brasil
-  trust: 0.84
-  enabled: true
-- name: Nexo Jornal
-  url: https://www.nexojornal.com.br/rss.xml
-  scope: brasil
-  trust: 0.82
-  enabled: true
-- name: Crusoe
-  url: https://crusoe.com.br/feed/
-  scope: brasil
-  trust: 0.72
-  enabled: true
-- name: O Antagonista
-  url: https://oantagonista.com.br/feed/
-  scope: brasil
-  trust: 0.68
-  enabled: true
-- name: Brasil de Fato
-  url: https://www.brasildefato.com.br/rss
-  scope: brasil
-  trust: 0.68
-  enabled: true
-- name: InfoMoney
-  url: https://www.infomoney.com.br/feed/
-  scope: brasil
-  trust: 0.78
-  enabled: true
-- name: Exame
-  url: https://exame.com/feed/
-  scope: brasil
-  trust: 0.76
-  enabled: true
-- name: Canaltech
-  url: https://canaltech.com.br/rss/
-  scope: brasil
-  trust: 0.74
-  enabled: true
-- name: Olhar Digital
-  url: https://olhardigital.com.br/feed/
-  scope: brasil
-  trust: 0.72
-  enabled: true
 - name: Agencia Brasil - Ultimas
   url: https://agenciabrasil.ebc.com.br/feed/ultimasnoticias/feed.xml
   scope: brasil
@@ -149,11 +55,6 @@ feeds:
   scope: brasil
   trust: 0.86
   enabled: true
-- name: Cidade Verde
-  url: https://cidadeverde.com/rss
-  scope: piaui
-  trust: 0.74
-  enabled: true
 - name: GNews - STF Decisoes
   url: https://news.google.com/rss/search?q=STF+decis%C3%A3o+julgamento&hl=pt-BR&gl=BR&ceid=BR:pt-419
   scope: brasil
@@ -174,21 +75,6 @@ feeds:
   scope: brasil
   trust: 0.76
   enabled: true
-- name: GNews - Corrupcao Brasil
-  url: https://news.google.com/rss/search?q=corrup%C3%A7%C3%A3o+desvio+dinheiro+p%C3%BAblico+Brasil&hl=pt-BR&gl=BR&ceid=BR:pt-419
-  scope: brasil
-  trust: 0.7
-  enabled: true
-- name: GNews - Licitacao Fraude Brasil
-  url: https://news.google.com/rss/search?q=licita%C3%A7%C3%A3o+fraude+superfaturamento+Brasil&hl=pt-BR&gl=BR&ceid=BR:pt-419
-  scope: brasil
-  trust: 0.7
-  enabled: true
-- name: GNews - Saude Publica Brasil
-  url: https://news.google.com/rss/search?q=sa%C3%BAde+p%C3%BAblica+SUS+hospital+crise&hl=pt-BR&gl=BR&ceid=BR:pt-419
-  scope: brasil
-  trust: 0.7
-  enabled: true
 - name: GNews - Senado Senadores
   url: https://news.google.com/rss/search?q=site%3Awww12.senado.leg.br+noticias&hl=pt-BR&gl=BR&ceid=BR:pt-419
   scope: brasil
@@ -198,6 +84,58 @@ feeds:
   url: https://news.google.com/rss/search?q=C%C3%A2mara+Deputados+vota%C3%A7%C3%A3o+projeto+lei&hl=pt-BR&gl=BR&ceid=BR:pt-419
   scope: brasil
   trust: 0.72
+  enabled: true
+
+# ── Piauí (portais nativos + buscas) ──────────────────────────────────────
+- name: Cidade Verde
+  url: https://cidadeverde.com/rss
+  scope: piaui
+  trust: 0.74
+  enabled: true
+- name: Portal O Dia
+  url: https://www.portalodia.com/rss
+  scope: piaui
+  trust: 0.74
+  enabled: true
+- name: Diario do Piaui
+  url: https://diariodopiaui.com.br/feed/
+  scope: piaui
+  trust: 0.70
+  enabled: true
+- name: GNews - 180 Graus PI
+  url: https://news.google.com/rss/search?q=site%3A180graus.com+(Piau%C3%AD+OR+Teresina)&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: piaui
+  trust: 0.70
+  enabled: true
+- name: GNews - Meio Norte PI
+  url: https://news.google.com/rss/search?q=site%3Ameionorte.com+(Piau%C3%AD+OR+Teresina)&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: piaui
+  trust: 0.72
+  enabled: true
+- name: GNews - GP1 PI
+  url: https://news.google.com/rss/search?q=site%3Agp1.com.br+(Piau%C3%AD+OR+Teresina)&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: piaui
+  trust: 0.70
+  enabled: true
+- name: GNews - Portal AZ PI
+  url: https://news.google.com/rss/search?q=site%3Aportalaz.com.br+(Piau%C3%AD+OR+Teresina)&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: piaui
+  trust: 0.70
+  enabled: true
+- name: GNews - Floriano PI
+  url: https://news.google.com/rss/search?q=Floriano+Piau%C3%AD&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: piaui
+  trust: 0.66
+  enabled: true
+- name: GNews - Parnaiba PI
+  url: https://news.google.com/rss/search?q=Parna%C3%ADba+Piau%C3%AD&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: piaui
+  trust: 0.66
+  enabled: true
+- name: GNews - Picos PI
+  url: https://news.google.com/rss/search?q=Picos+Piau%C3%AD+cidade&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: piaui
+  trust: 0.64
   enabled: true
 - name: GNews - TCE-PI MPPI TJPI
   url: https://news.google.com/rss/search?q=TCE-PI+OR+MPPI+OR+TJPI&hl=pt-BR&gl=BR&ceid=BR:pt-419
@@ -234,6 +172,8 @@ feeds:
   scope: piaui
   trust: 0.68
   enabled: true
+
+# ── Teresina ──────────────────────────────────────────────────────────────
 - name: GNews - Teresina Prefeitura
   url: https://news.google.com/rss/search?q=Teresina+prefeitura+obra+contrato&hl=pt-BR&gl=BR&ceid=BR:pt-419
   scope: teresina
@@ -284,3 +224,115 @@ feeds:
   scope: teresina
   trust: 0.7
   enabled: true
+
+# ── Desabilitados (mantidos para histórico) ───────────────────────────────
+- name: UOL Noticias
+  url: https://rss.uol.com.br/feed/noticias.xml
+  scope: brasil
+  trust: 0.82
+  enabled: false
+- name: CNN Brasil
+  url: https://www.cnnbrasil.com.br/feed/
+  scope: brasil
+  trust: 0.8
+  enabled: false
+- name: BBC Brasil
+  url: https://feeds.bbci.co.uk/portuguese/rss.xml
+  scope: brasil
+  trust: 0.88
+  enabled: false
+- name: Veja
+  url: https://veja.abril.com.br/feed/
+  scope: brasil
+  trust: 0.76
+  enabled: false
+- name: Metropoles
+  url: https://www.metropoles.com/feed/
+  scope: brasil
+  trust: 0.76
+  enabled: false
+- name: Poder360
+  url: https://www.poder360.com.br/feed/
+  scope: brasil
+  trust: 0.82
+  enabled: false
+- name: Congresso em Foco
+  url: https://congressoemfoco.uol.com.br/feed/
+  scope: brasil
+  trust: 0.8
+  enabled: false
+- name: CartaCapital
+  url: https://www.cartacapital.com.br/feed/
+  scope: brasil
+  trust: 0.74
+  enabled: false
+- name: The Intercept Brasil
+  url: https://theintercept.com/brasil/feed/
+  scope: brasil
+  trust: 0.78
+  enabled: false
+- name: Agencia Publica
+  url: https://apublica.org/feed/
+  scope: brasil
+  trust: 0.82
+  enabled: false
+- name: Piaui Magazine
+  url: https://piaui.folha.uol.com.br/feed/
+  scope: brasil
+  trust: 0.84
+  enabled: false
+- name: Nexo Jornal
+  url: https://www.nexojornal.com.br/rss.xml
+  scope: brasil
+  trust: 0.82
+  enabled: false
+- name: Crusoe
+  url: https://crusoe.com.br/feed/
+  scope: brasil
+  trust: 0.72
+  enabled: false
+- name: O Antagonista
+  url: https://oantagonista.com.br/feed/
+  scope: brasil
+  trust: 0.68
+  enabled: false
+- name: Brasil de Fato
+  url: https://www.brasildefato.com.br/rss
+  scope: brasil
+  trust: 0.68
+  enabled: false
+- name: InfoMoney
+  url: https://www.infomoney.com.br/feed/
+  scope: brasil
+  trust: 0.78
+  enabled: false
+- name: Exame
+  url: https://exame.com/feed/
+  scope: brasil
+  trust: 0.76
+  enabled: false
+- name: Canaltech
+  url: https://canaltech.com.br/rss/
+  scope: brasil
+  trust: 0.74
+  enabled: false
+- name: Olhar Digital
+  url: https://olhardigital.com.br/feed/
+  scope: brasil
+  trust: 0.72
+  enabled: false
+- name: GNews - Corrupcao Brasil
+  url: https://news.google.com/rss/search?q=corrup%C3%A7%C3%A3o+desvio+dinheiro+p%C3%BAblico+Brasil&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: brasil
+  trust: 0.7
+  enabled: false
+- name: GNews - Licitacao Fraude Brasil
+  url: https://news.google.com/rss/search?q=licita%C3%A7%C3%A3o+fraude+superfaturamento+Brasil&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: brasil
+  trust: 0.7
+  enabled: false
+- name: GNews - Saude Publica Brasil
+  url: https://news.google.com/rss/search?q=sa%C3%BAde+p%C3%BAblica+SUS+hospital+crise&hl=pt-BR&gl=BR&ceid=BR:pt-419
+  scope: brasil
+  trust: 0.7
+  enabled: false
