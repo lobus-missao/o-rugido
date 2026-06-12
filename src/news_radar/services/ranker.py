@@ -170,15 +170,15 @@ def recency_score(published_at: str | None) -> float:
     if not dt.tzinfo:
         dt = dt.replace(tzinfo=timezone.utc)
     hours = max(0.0, (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds() / 3600)
+    if hours <= 2:
+        return 15  # breaking
     if hours <= 6:
         return 10
     if hours <= 24:
-        return 8
-    if hours <= 72:
-        return 6
+        return 5
     if hours <= 168:
-        return 4
-    return 1
+        return 0
+    return -10  # > 7 dias = velha, penaliza
 
 
 def clamp(value: float, min_value: float = 0, max_value: float = 100) -> float:
@@ -302,7 +302,17 @@ def automatic_scores(article: dict[str, Any]) -> dict[str, Any]:
     if source_scope == "piaui":
         piaui_bonus += 10
 
-    score_piaui = clamp(common + piaui_bonus + teresina_bonus * 0.5)
+    # Exclusiva local: só uma fonte cobriu E é fonte do PI → potencial scoop
+    coverage = int(article.get("coverage_count") or 1)
+    if coverage == 1 and source_scope == "piaui":
+        exclusivity_bonus = 5
+        reasons.append("exclusiva local")
+    else:
+        exclusivity_bonus = 0
+
+    score_piaui = clamp(
+        common + piaui_bonus + teresina_bonus * 0.5 + exclusivity_bonus
+    )
 
     # Penaliza notícia sem menção local nenhuma.
     if piaui_count == 0 and teresina_count == 0:
@@ -313,39 +323,6 @@ def automatic_scores(article: dict[str, Any]) -> dict[str, Any]:
         "final_score_piaui": round(score_piaui, 2),
         "reasons": reasons,
     }
-
-
-def ai_score_from_payload(payload: dict[str, Any]) -> float:
-    modern_fields = [
-        "interesse_publico",
-        "impacto_social",
-        "urgencia",
-        "relevancia_local",
-        "dinheiro_publico",
-    ]
-    legacy_fields = [
-        "impacto_publico",
-        "gravidade",
-        "relevancia_politica",
-        "risco_investigativo",
-        "dinheiro_publico",
-    ]
-    fields = modern_fields if any(field in payload for field in modern_fields) else legacy_fields
-    values = []
-    for field in fields:
-        try:
-            values.append(float(payload.get(field, 0)))
-        except Exception:
-            values.append(0)
-    if not values:
-        return 0
-    return clamp((sum(values) / len(values)) * 10)
-
-
-def combine_with_ai(auto_score: float, ai_score: float | None) -> float:
-    if ai_score is None:
-        return round(float(auto_score), 2)
-    return round(clamp(float(auto_score) * 0.58 + float(ai_score) * 0.42), 2)
 
 
 PRIORITY_THRESHOLDS = [
@@ -416,17 +393,16 @@ def rank_all() -> int:
     with connect() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT id, title, summary, source_scope, source_trust,"
-            " published_at, ai_score FROM articles"
+            " published_at, coverage_count FROM articles"
         )
         rows = [dict(r) for r in cur.fetchall()]
 
     batch = []
     for article in rows:
         scores = automatic_scores(article)
-        ai = float(article["ai_score"]) if article["ai_score"] is not None else None
         batch.append((
             scores["auto_score_piaui"],
-            combine_with_ai(scores["auto_score_piaui"], ai),
+            scores["final_score_piaui"],
             json_dumps(scores.get("reasons", [])),
             article["id"],
         ))

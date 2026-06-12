@@ -29,9 +29,8 @@ SCHEMA_SQL = [
 
         auto_score_piaui NUMERIC NOT NULL DEFAULT 0,
         final_score_piaui NUMERIC NOT NULL DEFAULT 0,
+        coverage_count INTEGER NOT NULL DEFAULT 1,
 
-        ai_score NUMERIC,
-        ai_json JSONB,
         category TEXT,
         locality TEXT,
         priority TEXT,
@@ -143,9 +142,7 @@ MIGRATION_SQL: dict[str, str] = {
             WHEN card_status = 'approved' THEN 'approved'
             WHEN card_status = 'rejected' THEN 'rejected'
             WHEN card_status = 'pending' THEN 'sent_to_telegram'
-            WHEN ai_score IS NOT NULL AND priority IN ('alta','critica') THEN 'selected'
-            WHEN ai_score IS NOT NULL THEN 'ai_done'
-            WHEN priority IN ('alta','critica') THEN 'needs_ai'
+            WHEN priority IN ('alta','critica') THEN 'selected'
             ELSE 'discovered'
         END
     WHERE editorial_status IS NULL OR editorial_status = 'discovered'
@@ -210,12 +207,43 @@ MIGRATION_SQL: dict[str, str] = {
         "DROP TABLE IF EXISTS story_clusters CASCADE; "
         "DROP TABLE IF EXISTS ai_batches CASCADE;"
     ),
+    # v13 — edição via web (token + overrides por dispatch)
+    "v13_dispatches_edit_token": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS edit_token TEXT"
+    ),
+    "v13_dispatches_edit_token_expires_at": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS edit_token_expires_at TIMESTAMPTZ"
+    ),
+    "v13_dispatches_edited_title": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS edited_title TEXT"
+    ),
+    "v13_dispatches_edited_summary": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS edited_summary TEXT"
+    ),
+    "v13_dispatches_image_url": (
+        "ALTER TABLE dispatches ADD COLUMN IF NOT EXISTS image_url TEXT"
+    ),
+    "v13_dispatches_edit_token_idx": (
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_dispatches_edit_token"
+        " ON dispatches(edit_token) WHERE edit_token IS NOT NULL"
+    ),
+    # v14 — remove camada IA (nunca foi conectada na prática).
+    "v14_articles_drop_ai_columns": (
+        "ALTER TABLE articles DROP COLUMN IF EXISTS ai_score; "
+        "ALTER TABLE articles DROP COLUMN IF EXISTS ai_json;"
+    ),
+    # v15 — cobertura por múltiplas fontes (sinal de exclusividade/destaque).
+    "v15_articles_coverage_count": (
+        "ALTER TABLE articles ADD COLUMN IF NOT EXISTS coverage_count INTEGER NOT NULL DEFAULT 1"
+    ),
+    "v15_articles_coverage_count_idx": (
+        "CREATE INDEX IF NOT EXISTS idx_articles_coverage_count ON articles(coverage_count DESC)"
+    ),
 }
 
 DATE_COLUMN_MIGRATIONS = {
     "articles": ["published_at", "created_at", "updated_at"],
     "feed_runs": ["started_at", "finished_at"],
-    "ai_batches": ["created_at", "started_at", "completed_at", "updated_at"],
 }
 
 

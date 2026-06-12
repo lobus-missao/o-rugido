@@ -116,18 +116,6 @@ def stats() -> dict:
         cur.execute("SELECT COUNT(*) AS total FROM articles")
         total = cur.fetchone()["total"]
 
-        cur.execute("SELECT COUNT(*) AS total FROM articles WHERE ai_score IS NOT NULL")
-        with_ai = cur.fetchone()["total"]
-
-        cur.execute(
-            """
-                SELECT status, COUNT(*) AS total
-                FROM ai_batches
-                GROUP BY status
-                """
-        )
-        batch_totals = cur.fetchall()
-
         cur.execute(
             """
                 SELECT source, status, collected_count, error, finished_at
@@ -140,7 +128,5 @@ def stats() -> dict:
 
     return {
         "total_articles": total,
-        "articles_with_ai": with_ai,
-        "ai_batches": {row["status"]: row["total"] for row in batch_totals},
         "feed_runs": [dict(row) for row in feed_runs],
     }

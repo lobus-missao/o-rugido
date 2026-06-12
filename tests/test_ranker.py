@@ -2,16 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 from news_radar.services.ranker import (
     PIAUI_TERMS,
     PUBLIC_ORG_TERMS,
     TERESINA_TERMS,
-    ai_score_from_payload,
     automatic_scores,
     clamp,
-    combine_with_ai,
     parse_datetime,
     recency_score,
 )
@@ -33,58 +29,6 @@ class TestClamp:
         assert clamp(10, min_value=20, max_value=40) == 20
 
 
-# ── combine_with_ai ──────────────────────────────────────────────────────────
-
-class TestCombineWithAI:
-    def test_sem_ai_retorna_auto(self):
-        assert combine_with_ai(70.0, None) == 70.0
-
-    def test_com_ai_aplica_peso(self):
-        # 70 * 0.58 + 30 * 0.42 = 40.6 + 12.6 = 53.2
-        result = combine_with_ai(70.0, 30.0)
-        assert result == pytest.approx(53.2, abs=0.01)
-
-    def test_clampa_no_max(self):
-        assert combine_with_ai(150.0, 200.0) == 100.0
-
-    def test_aceita_strings_numericas(self):
-        # combine_with_ai aceita float(); valores em string numérica passam
-        assert combine_with_ai("80", "50") == pytest.approx(67.4, abs=0.01)
-
-
-# ── ai_score_from_payload ────────────────────────────────────────────────────
-
-class TestAIScoreFromPayload:
-    def test_campos_modernos(self):
-        payload = {
-            "interesse_publico": 8,
-            "impacto_social": 7,
-            "urgencia": 6,
-            "relevancia_local": 9,
-            "dinheiro_publico": 5,
-        }
-        # média = (8+7+6+9+5)/5 = 7.0 → score = 70.0
-        assert ai_score_from_payload(payload) == pytest.approx(70.0, abs=0.01)
-
-    def test_campos_legacy(self):
-        # Sem nenhum campo "modern" — força fallback para legacy_fields
-        payload = {
-            "impacto_publico": 6,
-            "gravidade": 8,
-            "relevancia_politica": 5,
-            "risco_investigativo": 7,
-        }
-        # avg de 4 campos preenchidos + 1 ausente (=0): (6+8+5+7+0)/5 = 5.2 → 52.0
-        assert ai_score_from_payload(payload) == pytest.approx(52.0, abs=0.01)
-
-    def test_payload_vazio_retorna_zero(self):
-        assert ai_score_from_payload({}) == 0
-
-    def test_valores_invalidos_viram_zero(self):
-        payload = {"interesse_publico": "n/a", "impacto_social": None}
-        assert ai_score_from_payload(payload) == 0
-
-
 # ── recency_score ────────────────────────────────────────────────────────────
 
 class TestRecencyScore:
@@ -100,6 +44,15 @@ class TestRecencyScore:
         old = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
         score = recency_score(old)
         assert score < 3.0
+
+    def test_breaking_news_max_score(self):
+        # Publicada há 1h → breaking news (15 pontos)
+        recent = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        assert recency_score(recent) == 15
+
+    def test_velha_penaliza(self):
+        old = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        assert recency_score(old) == -10
 
 
 # ── parse_datetime ───────────────────────────────────────────────────────────
@@ -178,6 +131,21 @@ class TestAutomaticScores:
             summary="Prefeitura de Teresina libera R$ 5 milhões.",
         ))
         assert isinstance(scores["reasons"], list)
+
+    def test_exclusiva_local_premia(self):
+        # coverage_count=1 + scope=piaui → +5 pontos de exclusividade
+        com_excl = automatic_scores(self._article(
+            title="Governo do Piauí anuncia obras em Teresina",
+            source_scope="piaui",
+            coverage_count=1,
+        ))
+        sem_excl = automatic_scores(self._article(
+            title="Governo do Piauí anuncia obras em Teresina",
+            source_scope="piaui",
+            coverage_count=5,
+        ))
+        assert com_excl["final_score_piaui"] > sem_excl["final_score_piaui"]
+        assert "exclusiva local" in com_excl["reasons"]
 
 
 # ── listas de termos ─────────────────────────────────────────────────────────

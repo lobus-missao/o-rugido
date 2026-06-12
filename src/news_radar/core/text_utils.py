@@ -43,6 +43,30 @@ def normalize_text(value: str | None) -> str:
     return value
 
 
+_TITLE_SEPS = (" – ", " - ")  # noqa: RUF001 — en-dash (U+2013) é intencional
+
+
+def strip_source_suffix(title: str) -> str:
+    """Remove sufixo " - Fonte" comum em títulos de Google News e similares."""
+    title = (title or "").strip()
+    if not title:
+        return title
+    for sep in _TITLE_SEPS:
+        if sep not in title:
+            continue
+        head, _, tail = title.rpartition(sep)
+        if not head or not tail:
+            continue
+        if (
+            2 <= len(tail) <= 40
+            and len(head) > 20
+            and not any(c in tail for c in "?!:")
+            and (tail[0].isupper() or tail[0].isdigit())
+        ):
+            return head.strip()
+    return title
+
+
 def title_signature(title: str) -> str:
     """
     Fingerprint do título para deduplicação cross-feed.

@@ -10,7 +10,13 @@ from dateutil import parser as date_parser
 
 from news_radar.adapters.n8n_webhook import notify_ingestion_complete
 from news_radar.core.db import connect, init_db, json_dumps, utc_now
-from news_radar.core.text_utils import article_id, canonicalize_url, strip_html, title_signature
+from news_radar.core.text_utils import (
+    article_id,
+    canonicalize_url,
+    strip_html,
+    strip_source_suffix,
+    title_signature,
+)
 
 from .feeds import load_feeds_config
 from .ranker import automatic_scores
@@ -40,7 +46,7 @@ def entry_summary(entry: Any) -> str:
 
 
 def normalize_entry(entry: Any, source: dict[str, Any]) -> dict[str, Any] | None:
-    title = strip_html(getattr(entry, "title", "") or "")
+    title = strip_source_suffix(strip_html(getattr(entry, "title", "") or ""))
     url = getattr(entry, "link", "") or ""
 
     if not title or not url:
@@ -81,13 +87,24 @@ def upsert_article(conn, item: dict[str, Any]) -> bool:
     with conn.cursor() as cur:
         # Prefer URL matches. Title signatures are fuzzy and may collide across
         # syndicated stories that already have a different canonical URL.
-        cur.execute("SELECT id FROM articles WHERE canonical_url = %s LIMIT 1", (item["canonical_url"],))
+        cur.execute(
+            "SELECT id, source FROM articles WHERE canonical_url = %s LIMIT 1",
+            (item["canonical_url"],),
+        )
         existing = cur.fetchone()
+        matched_by_url = bool(existing)
         if not existing:
-            cur.execute("SELECT id FROM articles WHERE title_signature = %s LIMIT 1", (item["title_signature"],))
+            cur.execute(
+                "SELECT id, source FROM articles WHERE title_signature = %s LIMIT 1",
+                (item["title_signature"],),
+            )
             existing = cur.fetchone()
 
         if existing:
+            # Outra fonte cobrindo a mesma história → +1 em coverage_count
+            coverage_inc = (
+                0 if matched_by_url or existing["source"] == item["source"] else 1
+            )
             cur.execute(
                 """
                 UPDATE articles SET
@@ -102,11 +119,9 @@ def upsert_article(conn, item: dict[str, Any]) -> bool:
                     content = %s,
                     raw_json = %s,
                     auto_score_piaui = %s,
-                    final_score_piaui = CASE
-                        WHEN ai_score IS NULL THEN %s
-                        ELSE final_score_piaui
-                    END,
+                    final_score_piaui = %s,
                     score_reasons_json = %s,
+                    coverage_count = coverage_count + %s,
                     updated_at = %s
                 WHERE id = %s
                 """,
@@ -124,6 +139,7 @@ def upsert_article(conn, item: dict[str, Any]) -> bool:
                     item["auto_score_piaui"],
                     item["final_score_piaui"],
                     json_dumps(item.get("reasons", [])),
+                    coverage_inc,
                     now,
                     existing["id"],
                 ),

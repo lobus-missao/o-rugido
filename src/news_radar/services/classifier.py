@@ -319,13 +319,7 @@ def classify_article(article: dict, recency_hours: float = 48.0) -> dict:
 
 
 def enrich_article_without_ai(article: dict, recency_hours: float = 48.0) -> dict:
-    """
-    Para artigos sem IA: preenche priority e category usando o classificador local.
-    Retorna cópia do artigo com priority e category preenchidos se estiverem vazios.
-    """
-    if article.get("ai_score"):
-        return article  # já tem IA real — não sobrescreve
-
+    """Preenche priority e category usando o classificador local."""
     result = dict(article)
     classification = classify_article(article, recency_hours)
 
