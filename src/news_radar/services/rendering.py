@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-import json
 import logging
+import mimetypes
 import os
 import shutil
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
+
+import requests
 
 from news_radar.core.config import CARDS_DIR, TEMPLATES_DIR, ensure_dirs
+from news_radar.core.text_utils import strip_source_suffix
 
 from ..repositories.articles import articles_pending_card, update_card_status
 
@@ -40,25 +44,12 @@ def build_card_context(
 
     Supports all placeholders used by card.html and card-editorial-base.html.
     Every value is a plain string — never None, never a raw '{{...}}' marker.
-    title_override / subtitle_override take priority over ai_json suggestions.
     """
-    ai_json = article.get("ai_json") or {}
-    if isinstance(ai_json, str):
-        try:
-            ai_json = json.loads(ai_json)
-        except Exception:
-            ai_json = {}
-
     # ── Título ─────────────────────────────────────────────────────────────────
-    titulo = (
-        title_override
-        or ai_json.get("titulo_sugerido")
-        or article.get("title")
-        or ""
-    ).strip()
+    titulo = strip_source_suffix(title_override or article.get("title") or "")
 
     # ── Subtítulo (card-editorial-base.html) ───────────────────────────────────
-    subtitulo_raw = (subtitle_override or ai_json.get("subtitulo_sugerido") or "").strip()
+    subtitulo_raw = (subtitle_override or "").strip()
     subtitulo_html = (
         f'<div class="card-subtitulo">{subtitulo_raw}</div>' if subtitulo_raw else ""
     )
@@ -69,48 +60,22 @@ def build_card_context(
     priority_color = _PRIORITY_COLOR.get(priority, "#6b7280")
 
     # ── Editoria / Categoria ───────────────────────────────────────────────────
-    category = article.get("category") or ai_json.get("editoria") or "-"
+    category = article.get("category") or "-"
     categoria_tag = (
         f'<span class="tag tag-categoria">{category}</span>'
         if category and category != "-"
         else ""
     )
 
-    # ── Pontos-chave ───────────────────────────────────────────────────────────
-    pontos_chave_raw = ai_json.get("pontos_chave") or []
-    if isinstance(pontos_chave_raw, str):
-        pontos_chave_raw = [pontos_chave_raw]
-    pontos_li = "".join(f"<li>{p}</li>" for p in pontos_chave_raw[:4])
-    # card.html uses {{pontos_chave}} inside an existing <ul>
-    # card-editorial-base.html uses {{pontos_html}} as a standalone block
-    pontos_html_block = (
-        f'<div class="card-pontos"><ul>{pontos_li}</ul></div>' if pontos_li else ""
-    )
-
     # ── Resumo ─────────────────────────────────────────────────────────────────
-    resumo = (ai_json.get("resumo_curto") or article.get("summary") or "")[:200]
-
-    # ── Score ──────────────────────────────────────────────────────────────────
-    score = float(article.get("final_score_piaui") or 0)
-
-    # ── IA badge ───────────────────────────────────────────────────────────────
-    ia_badge = "IA" if article.get("ai_score") else "AUTO"
+    summary_override = (article.get("__summary_override") or "").strip()
+    resumo_raw = summary_override or article.get("summary") or ""
+    resumo = resumo_raw[:200]
 
     # ── Localidade ─────────────────────────────────────────────────────────────
-    localidade = ai_json.get("localidade") or article.get("locality") or ""
+    localidade = article.get("locality") or ""
     localidade_tag = (
         f'<span class="tag local">{localidade}</span>' if localidade else ""
-    )
-
-    # ── Entidades (máx 3) ──────────────────────────────────────────────────────
-    entidades = ai_json.get("entidades") or []
-    if isinstance(entidades, str):
-        try:
-            entidades = json.loads(entidades)
-        except Exception:
-            entidades = [entidades]
-    entidades_tags = "".join(
-        f'<span class="tag entidade">{e}</span>' for e in entidades[:3]
     )
 
     # ── Riqueza de conteúdo (card.html legacy) ─────────────────────────────────
@@ -124,12 +89,6 @@ def build_card_context(
     else:
         conteudo_tag = '<span class="tag conteudo-simples">Sem resumo</span>'
 
-    # ── Justificativa do score ─────────────────────────────────────────────────
-    justif = ai_json.get("justificativa_score") or ""
-    justificativa_html = (
-        f'<div class="justificativa">{justif[:140]}</div>' if justif else ""
-    )
-
     hero_url = (image_url or "").strip()
     hero_empty_class = "" if hero_url else " empty"
 
@@ -140,17 +99,15 @@ def build_card_context(
         "prioridade": priority_label,
         "prioridade_cor": priority_color,
         "resumo": resumo,
-        "pontos_chave": pontos_li,
-        "pontos_html": pontos_html_block,
+        "pontos_chave": "",
+        "pontos_html": "",
         "fonte": article.get("source") or "",
         "data": str(article.get("published_at") or "")[:10],
-        "score": f"{score:.0f}",
-        "ia_badge": ia_badge,
         "localidade_tag": localidade_tag,
-        "entidades_tags": entidades_tags,
+        "entidades_tags": "",
         "categoria_tag": categoria_tag,
         "conteudo_tag": conteudo_tag,
-        "justificativa_html": justificativa_html,
+        "justificativa_html": "",
         "url": article.get("url") or article.get("canonical_url") or "",
         "image_url": hero_url,
         "hero_empty_class": hero_empty_class,
@@ -263,28 +220,75 @@ def list_templates() -> list[str]:
     return names if names else ["card.html"]
 
 
+_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+_VALID_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+def _image_extension_from(url: str, content_type: str | None) -> str | None:
+    """Determina extensão a partir do Content-Type (preferencial) ou URL."""
+    if content_type:
+        mime = content_type.split(";")[0].strip().lower()
+        if mime not in _VALID_IMAGE_MIMES:
+            return None  # SVG, HTML, etc — rejeita
+        guessed = mimetypes.guess_extension(mime)
+        if guessed:
+            ext = guessed.lower()
+            if ext == ".jpe":
+                ext = ".jpg"
+            if ext in _IMAGE_EXTS:
+                return ext
+    path = urlparse(url).path.lower()
+    for ext in _IMAGE_EXTS:
+        if path.endswith(ext):
+            return ext
+    return None
+
+
+def _find_cached_post_image(article_id: str) -> Path | None:
+    """Retorna o arquivo `post_<id>.*` já baixado, se existir."""
+    for ext in _IMAGE_EXTS:
+        cached = CARDS_DIR / f"post_{article_id[:16]}{ext}"
+        if cached.exists() and cached.stat().st_size > 0:
+            return cached
+    return None
+
+
+def download_post_image(image_url: str, article_id: str) -> Path | None:
+    """Baixa a imagem do post pro disco. Rejeita SVG/HTML/conteúdo inválido."""
+    if not image_url:
+        return None
+    try:
+        resp = requests.get(
+            image_url,
+            timeout=15,
+            headers={"User-Agent": "news-radar/1.0"},
+            allow_redirects=True,
+        )
+        resp.raise_for_status()
+        ext = _image_extension_from(image_url, resp.headers.get("Content-Type"))
+        if not ext:
+            logger.warning(
+                "tipo invalido (Content-Type=%s) em %s",
+                resp.headers.get("Content-Type"),
+                image_url,
+            )
+            return None
+        dest = CARDS_DIR / f"post_{article_id[:16]}{ext}"
+        dest.write_bytes(resp.content)
+        return dest
+    except Exception as exc:
+        logger.warning("falha ao baixar imagem %s: %s", image_url, exc)
+        return None
+
+
 def render_cards(
     scope: str = "piaui",
     limit: int = 5,
     article_ids: list[str] | None = None,
     template_name: str = "card.html",
 ) -> list[dict[str, Any]]:
-    """Render cards for a list of articles or the pending queue.
-
-    For each valid article:
-    1. Renders HTML and saves it to data/cards/ (audit trail).
-    2. Attempts Playwright PNG generation.
-    3. If Playwright is unavailable, returns HTML-only results and logs a warning.
-
-    Returns a list of dicts with keys: article_id, title, card_path, html_path.
-    card_path is None when Playwright is unavailable.
-    """
+    """Prepara imagens dos posts pendentes. Delega pro render_single_card."""
     ensure_dirs()
-    template_path = TEMPLATES_DIR / template_name
-    if not template_path.exists():
-        raise FileNotFoundError(f"Template nao encontrado: {template_path}")
-
-    template = template_path.read_text(encoding="utf-8")
 
     if article_ids:
         from news_radar.core.db import connect
@@ -298,84 +302,38 @@ def render_cards(
     else:
         articles = articles_pending_card(scope=scope, limit=limit)
 
-    if not articles:
+    valid = [a for a in articles if a.get("title") and a.get("source")]
+    if not valid:
         return []
-
-    valid_articles = [a for a in articles if a.get("title") and a.get("source")]
-    if not valid_articles:
-        logger.warning("Nenhum artigo valido para gerar card (sem titulo ou fonte)")
-        return []
-
-    # Render and save HTML for all valid articles before attempting Playwright
-    rendered: list[tuple[dict, str, Path]] = []
-    for article in valid_articles:
-        html = _render_html(article, template, scope=scope)
-        html_path = save_card_html(article["id"], html)
-        rendered.append((article, html, html_path))
 
     generated: list[dict[str, Any]] = []
-
-    try:
-        from playwright.sync_api import sync_playwright
-
-        exec_path = _chromium_executable()
-        launch_kwargs = {"executable_path": exec_path} if exec_path else {}
-        with sync_playwright() as p:
-            browser = p.chromium.launch(**launch_kwargs)
-            page = browser.new_page(viewport={"width": 600, "height": 400})
-
-            for article, html, html_path in rendered:
-                card_path = CARDS_DIR / f"card_{article['id'][:16]}.png"
-                page.set_content(html, wait_until="networkidle")
-                page.locator("#card").screenshot(path=str(card_path))
-
-                update_card_status(
-                    article["id"],
-                    status="pending",
-                    card_path=str(card_path),
-                    html_path=str(html_path),
-                )
-                generated.append(
-                    {
-                        "article_id": article["id"],
-                        "title": article.get("title"),
-                        "card_path": str(card_path),
-                        "html_path": str(html_path),
-                    }
-                )
-
-            browser.close()
-
-    except Exception as exc:
-        logger.warning(
-            "Playwright indisponivel — gerado apenas HTML: %s", exc
-        )
-        for article, _html, html_path in rendered:
-            update_card_status(
-                article["id"],
-                status="pending",
-                card_path=None,
-                html_path=str(html_path),
-            )
-            generated.append(
-                {
-                    "article_id": article["id"],
-                    "title": article.get("title"),
-                    "card_path": None,
-                    "html_path": str(html_path),
-                    "playwright_error": str(exc)[:200],
-                }
-            )
-
+    for art in valid:
+        r = render_single_card(art["id"])
+        if r.get("ok"):
+            generated.append({
+                "article_id": art["id"],
+                "title": art.get("title"),
+                "card_path": r.get("card_path"),
+            })
+        else:
+            generated.append({
+                "article_id": art["id"],
+                "title": art.get("title"),
+                "card_path": None,
+                "error": r.get("error"),
+            })
     return generated
 
 
 def render_single_card(
     article_id: str,
     image_url: str | None = None,
-    template_name: str = "card.html",
+    template_name: str = "card-post.html",
+    *,
+    title_override: str | None = None,
+    summary_override: str | None = None,  # não afeta a imagem (vai pro caption)
 ) -> dict[str, Any]:
-    """Renderiza um único card pra PNG. Usado pela rota /cards/render."""
+    """Gera o card visual (PNG) com foto de fundo + banner de manchete."""
     from news_radar.core.db import connect
 
     ensure_dirs()
@@ -394,8 +352,49 @@ def render_single_card(
     if not article.get("title") or not article.get("source"):
         raise ValueError("Artigo precisa de title e source")
 
+    # Cache: se não veio URL explícita E já temos imagem baixada, usa cache.
+    # Se veio URL explícita, baixa de novo (editor pode ter trocado a imagem).
+    local_image: Path | None = None
+    if not image_url:
+        local_image = _find_cached_post_image(article_id)
+
+    if local_image is None:
+        candidates: list[str] = []
+        if image_url:
+            candidates.append(image_url)
+        else:
+            from news_radar.services.image_search import search_images
+            candidates.extend(
+                item["url"] for item in search_images(article["title"], limit=8)
+                if item.get("url")
+            )
+
+        if not candidates:
+            return {
+                "ok": False,
+                "article_id": article_id,
+                "error": "nenhuma imagem encontrada — use Editar pra escolher",
+            }
+
+        for url in candidates:
+            local_image = download_post_image(url, article_id)
+            if local_image:
+                image_url = url
+                break
+
+        if not local_image:
+            return {
+                "ok": False,
+                "article_id": article_id,
+                "error": f"todas as {len(candidates)} imagens candidatas falharam",
+            }
+    import base64
+    mime = mimetypes.guess_type(str(local_image))[0] or "image/jpeg"
+    b64 = base64.b64encode(local_image.read_bytes()).decode("ascii")
+    data_url = f"data:{mime};base64,{b64}"
+
     template = template_path.read_text(encoding="utf-8")
-    html = _render_html(article, template, image_url=image_url)
+    html = _render_html(article, template, image_url=data_url, title_override=title_override)
     html_path = save_card_html(article_id, html)
 
     card_path = CARDS_DIR / f"card_{article_id[:16]}.png"
@@ -407,7 +406,7 @@ def render_single_card(
         launch_kwargs = {"executable_path": exec_path} if exec_path else {}
         with sync_playwright() as p:
             browser = p.chromium.launch(**launch_kwargs)
-            page = browser.new_page(viewport={"width": 600, "height": 800})
+            page = browser.new_page(viewport={"width": 1080, "height": 1080})
             page.set_content(html, wait_until="networkidle")
             page.locator("#card").screenshot(path=str(card_path))
             browser.close()
@@ -426,4 +425,5 @@ def render_single_card(
         "article_id": article_id,
         "card_path": str(card_path),
         "html_path": str(html_path),
+        "image_url": image_url,
     }

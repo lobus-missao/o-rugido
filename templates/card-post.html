@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  #card {
+    width: 1080px;
+    height: 1080px;
+    background-color: #1e293b;
+    background-image: url('{{image_url}}');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    overflow: hidden;
+  }
+  .gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 60%,
+      rgba(0, 0, 0, 0.95) 82%,
+      rgba(251, 191, 36, 0.88) 100%
+    );
+    pointer-events: none;
+  }
+  .banner {
+    position: absolute;
+    bottom: 90px;
+    left: 0;
+    right: 0;
+    background: transparent;
+    border-top: 2px solid #fbbf24;
+    border-bottom: 2px solid #fbbf24;
+    padding: 32px 60px;
+  }
+  .headline {
+    color: #ffffff;
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.18;
+    text-align: center;
+    letter-spacing: 0.2px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+  }
+</style>
+</head>
+<body>
+<div id="card">
+  <div class="gradient"></div>
+  <div class="banner">
+    <div class="headline">{{titulo}}</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,8 +1,7 @@
-"""Fase 7 — Testes de geração de card editorial via HTML/PNG.
+"""Testes de geração de card editorial via HTML/PNG.
 
 Cobre: build_card_context, render_card_html, save_card_html, list_templates,
-validação de dados obrigatórios, fallback sem ai_json, overrides, e ausência
-de placeholders crus no HTML final.
+validação de dados obrigatórios, overrides e ausência de placeholders crus.
 """
 from __future__ import annotations
 
@@ -29,7 +28,7 @@ from news_radar.services.rendering import (
 
 ARTICLE_FULL = {
     "id": "abc123def456789012",
-    "title": "Prefeitura anuncia pacote de obras",
+    "title": "Prefeitura de Teresina anuncia pacote de obras",
     "url": "https://exemplo.com/obras",
     "canonical_url": "https://exemplo.com/obras",
     "source": "Cidade Verde",
@@ -39,24 +38,8 @@ ARTICLE_FULL = {
     "summary": "A Prefeitura de Teresina abriu licitação para obras de recapeamento. " * 5,
     "priority": "alta",
     "category": "Governos e politica",
-    "ai_score": 7.8,
     "final_score_piaui": 71.0,
     "locality": "Teresina",
-    "ai_json": {
-        "titulo_sugerido": "Teresina abre licitação para recapeamento de ruas",
-        "subtitulo_sugerido": "Investimento previsto de R$ 12 milhões",
-        "resumo_curto": "Prefeitura lança licitação de R$ 12 mi para obras nas zonas Norte e Sul.",
-        "pontos_chave": [
-            "R$ 12 milhões em obras",
-            "Zonas Norte e Sul beneficiadas",
-            "Prazo de 180 dias",
-        ],
-        "localidade": "Teresina",
-        "entidades": ["Prefeitura de Teresina", "SEMDUH"],
-        "tags": ["obras", "licitação", "infraestrutura"],
-        "justificativa_score": "Alto impacto local — investimento em infraestrutura pública.",
-        "editoria": "Governos e politica",
-    },
 }
 
 ARTICLE_MINIMAL = {
@@ -67,9 +50,9 @@ ARTICLE_MINIMAL = {
     "final_score_piaui": 40.0,
 }
 
-ARTICLE_NO_AI = {
-    "id": "noai0001noai0002no",
-    "title": "Artigo sem dados de IA",
+ARTICLE_MEDIA = {
+    "id": "med0001med0002med0",
+    "title": "Artigo de prioridade média",
     "source": "G1 PI",
     "source_scope": "brasil",
     "summary": "Um resumo simples mas com mais de cinquenta caracteres para testar o conteudo_tag.",
@@ -85,11 +68,11 @@ RAW_PLACEHOLDER_PATTERN = re.compile(r"\{\{[^}]+\}\}")
 # ── Testes: build_card_context ────────────────────────────────────────────────
 
 class TestBuildCardContext:
-    def test_titulo_usa_titulo_sugerido_da_ia(self):
+    def test_titulo_usa_title_do_artigo(self):
         ctx = build_card_context(ARTICLE_FULL)
-        assert ctx["titulo"] == "Teresina abre licitação para recapeamento de ruas"
+        assert ctx["titulo"] == ARTICLE_FULL["title"]
 
-    def test_titulo_fallback_para_title_sem_ai(self):
+    def test_titulo_fallback_para_title(self):
         ctx = build_card_context(ARTICLE_MINIMAL)
         assert ctx["titulo"] == ARTICLE_MINIMAL["title"]
 
@@ -97,34 +80,20 @@ class TestBuildCardContext:
         ctx = build_card_context(ARTICLE_FULL, title_override="Título Manual")
         assert ctx["titulo"] == "Título Manual"
 
-    def test_subtitle_override_tem_prioridade(self):
+    def test_subtitle_override_aparece(self):
         ctx = build_card_context(ARTICLE_FULL, subtitle_override="Sub manual")
         assert "Sub manual" in ctx["subtitulo_html"]
 
-    def test_subtitulo_html_vazio_sem_dado(self):
-        ctx = build_card_context(ARTICLE_NO_AI)
+    def test_subtitulo_html_vazio_sem_override(self):
+        ctx = build_card_context(ARTICLE_FULL)
         assert ctx["subtitulo_html"] == ""
-
-    def test_subtitulo_html_preenchido_com_ai_json(self):
-        ctx = build_card_context(ARTICLE_FULL)
-        assert "Investimento previsto" in ctx["subtitulo_html"]
-
-    def test_score_usa_final_score_piaui(self):
-        """Escopo único Piauí — score sempre vem de final_score_piaui."""
-        ctx = build_card_context(ARTICLE_FULL, scope="piaui")
-        assert ctx["score"] == "71"
-
-    def test_score_independe_do_scope_argumento(self):
-        """scope é mantido por compat de assinatura, mas score sempre é o Piauí."""
-        ctx = build_card_context(ARTICLE_FULL)
-        assert ctx["score"] == "71"
 
     def test_prioridade_label_alta(self):
         ctx = build_card_context(ARTICLE_FULL)
         assert ctx["prioridade"] == "ALTA"
 
     def test_prioridade_label_media(self):
-        ctx = build_card_context(ARTICLE_NO_AI)
+        ctx = build_card_context(ARTICLE_MEDIA)
         assert ctx["prioridade"] == "MEDIA"
 
     def test_prioridade_cor_alta(self):
@@ -136,30 +105,6 @@ class TestBuildCardContext:
         ctx = build_card_context(art)
         assert ctx["prioridade_cor"] == "#6b7280"
 
-    def test_ia_badge_com_ai_score(self):
-        ctx = build_card_context(ARTICLE_FULL)
-        assert ctx["ia_badge"] == "IA"
-
-    def test_ia_badge_sem_ai_score(self):
-        ctx = build_card_context(ARTICLE_MINIMAL)
-        assert ctx["ia_badge"] == "AUTO"
-
-    def test_pontos_chave_maximo_4(self):
-        art = {
-            **ARTICLE_NO_AI,
-            "ai_json": {"pontos_chave": ["p1", "p2", "p3", "p4", "p5", "p6"]},
-        }
-        ctx = build_card_context(art)
-        assert ctx["pontos_chave"].count("<li>") == 4
-
-    def test_entidades_maximo_3(self):
-        art = {
-            **ARTICLE_NO_AI,
-            "ai_json": {"entidades": ["E1", "E2", "E3", "E4", "E5"]},
-        }
-        ctx = build_card_context(art)
-        assert ctx["entidades_tags"].count("entidade") == 3
-
     def test_categoria_tag_gerada_com_categoria(self):
         ctx = build_card_context(ARTICLE_FULL)
         assert "tag-categoria" in ctx["categoria_tag"]
@@ -170,14 +115,20 @@ class TestBuildCardContext:
         ctx = build_card_context(art)
         assert ctx["categoria_tag"] == ""
 
-    def test_pontos_html_block_para_base_template(self):
-        ctx = build_card_context(ARTICLE_FULL)
-        assert "card-pontos" in ctx["pontos_html"]
-        assert "<ul>" in ctx["pontos_html"]
+    def test_localidade_de_locality(self):
+        art = {**ARTICLE_MINIMAL, "locality": "Parnaíba"}
+        ctx = build_card_context(art)
+        assert "Parnaíba" in ctx["localidade_tag"]
 
-    def test_pontos_html_vazio_sem_pontos(self):
-        ctx = build_card_context(ARTICLE_NO_AI)
-        assert ctx["pontos_html"] == ""
+    def test_summary_override_via_magic_key(self):
+        art = {**ARTICLE_FULL, "__summary_override": "Resumo editado pela editora"}
+        ctx = build_card_context(art)
+        assert "Resumo editado" in ctx["resumo"]
+
+    def test_resumo_truncado_a_200_chars(self):
+        art = {**ARTICLE_MINIMAL, "summary": "X" * 300}
+        ctx = build_card_context(art)
+        assert len(ctx["resumo"]) <= 200
 
     def test_nenhum_valor_e_none(self):
         ctx = build_card_context(ARTICLE_MINIMAL)
@@ -201,22 +152,18 @@ class TestBuildCardContext:
 class TestRenderCardHtml:
     def test_renderiza_sem_placeholders_crus_card_html(self):
         html = render_card_html(ARTICLE_FULL)
-        assert not RAW_PLACEHOLDER_PATTERN.search(html), (
-            "HTML final contém placeholder cru em card.html"
-        )
+        assert not RAW_PLACEHOLDER_PATTERN.search(html)
 
     def test_renderiza_sem_placeholders_crus_base_html(self):
         base = TEMPLATES_DIR / "card-editorial-base.html"
         if not base.exists():
             pytest.skip("card-editorial-base.html não encontrado")
         html = render_card_html(ARTICLE_FULL, template_name="card-editorial-base.html")
-        assert not RAW_PLACEHOLDER_PATTERN.search(html), (
-            "HTML final contém placeholder cru em card-editorial-base.html"
-        )
+        assert not RAW_PLACEHOLDER_PATTERN.search(html)
 
     def test_titulo_aparece_no_html(self):
         html = render_card_html(ARTICLE_FULL)
-        assert "Teresina abre licitação" in html
+        assert "Prefeitura de Teresina" in html
 
     def test_title_override_aparece_no_html(self):
         html = render_card_html(
@@ -233,7 +180,7 @@ class TestRenderCardHtml:
         assert "2026-05-29" in html
 
     def test_raise_sem_titulo(self):
-        art = {**ARTICLE_FULL, "title": "", "ai_json": {}}
+        art = {**ARTICLE_FULL, "title": ""}
         with pytest.raises(ValueError, match="titulo"):
             render_card_html(art)
 
@@ -246,19 +193,19 @@ class TestRenderCardHtml:
         with pytest.raises(FileNotFoundError):
             render_card_html(ARTICLE_FULL, template_name="nao_existe.html")
 
-    def test_fallback_sem_ai_json_sem_placeholders_crus(self):
-        html = render_card_html(ARTICLE_NO_AI)
-        assert not RAW_PLACEHOLDER_PATTERN.search(html)
-
     def test_artigo_minimal_sem_placeholders_crus(self):
         html = render_card_html(ARTICLE_MINIMAL)
         assert not RAW_PLACEHOLDER_PATTERN.search(html)
 
-    def test_subtitulo_html_em_base_template(self):
+    def test_subtitulo_override_aparece_no_base_template(self):
         base = TEMPLATES_DIR / "card-editorial-base.html"
         if not base.exists():
             pytest.skip("card-editorial-base.html não encontrado")
-        html = render_card_html(ARTICLE_FULL, template_name="card-editorial-base.html")
+        html = render_card_html(
+            ARTICLE_FULL,
+            template_name="card-editorial-base.html",
+            subtitle_override="Investimento previsto de R$ 12 milhões",
+        )
         assert "Investimento previsto de R$ 12 milhões" in html
 
     def test_card_html_contem_div_card(self):
@@ -326,32 +273,3 @@ class TestRenderHtmlInternal:
         assert "#dc2626" in html
         assert "CRITICA" in html
 
-    def test_score_inteiro_sem_decimais(self):
-        art = {**ARTICLE_FULL}
-        template = "score={{score}}"
-        html = _render_html(art, template, scope="piaui")
-        assert html == "score=71"
-
-    def test_resumo_truncado_a_200_chars(self):
-        art = {**ARTICLE_NO_AI, "summary": "X" * 300}
-        template = "{{resumo}}"
-        html = _render_html(art, template)
-        assert len(html) <= 200
-
-    def test_ai_json_como_string_json_e_parseado(self):
-        art = {
-            **ARTICLE_MINIMAL,
-            "ai_json": '{"titulo_sugerido": "Titulo via string JSON"}',
-        }
-        ctx = build_card_context(art)
-        assert ctx["titulo"] == "Titulo via string JSON"
-
-    def test_ai_json_invalido_usa_fallback(self):
-        art = {**ARTICLE_MINIMAL, "ai_json": "{nao e json valido}"}
-        ctx = build_card_context(art)
-        assert ctx["titulo"] == ARTICLE_MINIMAL["title"]
-
-    def test_localidade_de_locality_quando_sem_ai_json(self):
-        art = {**ARTICLE_MINIMAL, "locality": "Parnaíba"}
-        ctx = build_card_context(art)
-        assert "Parnaíba" in ctx["localidade_tag"]

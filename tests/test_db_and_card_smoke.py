@@ -17,14 +17,12 @@ def test_render_card_html_smoke():
             "published_at": "2026-05-28T10:00:00+00:00",
             "priority": "alta",
             "category": "Poder",
-            "final_score_brasil": 72,
-            "ai_json": {"pontos_chave": ["Ponto 1"], "entidades": ["TCE-PI"]},
+            "final_score_piaui": 72,
         },
         """
         <div id="card">
           {{titulo}} {{editoria}} {{prioridade}} {{resumo}}
-          <ul>{{pontos_chave}}</ul>
-          {{fonte}} {{score}} {{entidades_tags}}
+          {{fonte}}
         </div>
         """,
     )
@@ -32,7 +30,7 @@ def test_render_card_html_smoke():
     assert "Título de teste" in html
     assert "Poder" in html
     assert "ALTA" in html
-    assert "TCE-PI" in html
+    assert "Fonte" in html
 
 
 def test_init_db_smoke_against_configured_postgres(monkeypatch):
@@ -50,8 +48,8 @@ def test_init_db_smoke_against_configured_postgres(monkeypatch):
                 SELECT table_name
                 FROM information_schema.tables
                 WHERE table_schema = 'public'
-                  AND table_name IN ('articles', 'ai_batches', 'dispatches')
+                  AND table_name IN ('articles', 'dispatches')
             """)
         tables = {row["table_name"] for row in cur.fetchall()}
 
-    assert {"articles", "ai_batches", "dispatches"} <= tables
+    assert {"articles", "dispatches"} <= tables

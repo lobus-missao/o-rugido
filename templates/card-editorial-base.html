@@ -196,43 +196,6 @@
     font-size: 11px;
     color: #94a3b8;
   }
-
-  .footer-score {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .score-label {
-    font-size: 10px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .score-bar-bg {
-    width: 72px;
-    height: 5px;
-    background: #e2e8f0;
-    border-radius: 3px;
-    overflow: hidden;
-  }
-
-  .score-bar {
-    height: 100%;
-    background: {{prioridade_cor}};
-    border-radius: 3px;
-    width: calc({{score}} * 1%);
-    max-width: 100%;
-  }
-
-  .score-num {
-    font-size: 12px;
-    font-weight: 700;
-    color: #475569;
-    min-width: 24px;
-    text-align: right;
-  }
 </style>
 </head>
 <body>
@@ -244,7 +207,6 @@
       <span class="badge-prioridade">{{prioridade}}</span>
       <span class="badge-editoria">{{editoria}}</span>
     </div>
-    <span class="badge-ia">{{ia_badge}}</span>
   </div>
 
   <!-- Corpo do card -->
@@ -269,21 +231,13 @@
       {{categoria_tag}}
     </div>
 
-    <!-- Justificativa do score (opcional) -->
     {{justificativa_html}}
 
   </div>
 
-  <!-- Footer com fonte, data e score -->
+  <!-- Footer com fonte e data -->
   <div class="card-footer">
     <span class="footer-meta">{{fonte}} · {{data}}</span>
-    <div class="footer-score">
-      <span class="score-label">score</span>
-      <div class="score-bar-bg">
-        <div class="score-bar"></div>
-      </div>
-      <span class="score-num">{{score}}</span>
-    </div>
   </div>
 
 </div>

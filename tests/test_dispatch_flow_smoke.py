@@ -68,8 +68,8 @@ def test_approve_news_records_reviewer_without_generating_card(monkeypatch):
 
     result = dispatch.approve_article(10, "Editor Teste", generate_card=False, dry_run=True)
 
-    assert result["status"] == "article_approved"
-    assert updates[0]["status"] == "article_approved"
+    assert result["status"] == "ready_to_publish"
+    assert updates[0]["status"] == "ready_to_publish"
     assert updates[0]["article_reviewed_by"] == "Editor Teste"
     assert updates[0]["article_reviewed_at"] is not None
 
@@ -87,7 +87,13 @@ def test_generate_card_for_dispatch_sets_pending_card(monkeypatch, tmp_path):
     monkeypatch.setattr(dispatch, "update_dispatch", lambda dispatch_id, **fields: updates.append(fields))
 
     import news_radar.services.rendering as card_renderer
-    monkeypatch.setattr(card_renderer, "render_cards", lambda **kwargs: [{"card_path": str(card_path)}])
+    monkeypatch.setattr(
+        card_renderer,
+        "render_single_card",
+        lambda article_id, image_url=None, **kwargs: {
+            "ok": True, "article_id": article_id, "card_path": str(card_path),
+        },
+    )
 
     result = dispatch.generate_card_for_dispatch(10, "Editor Teste", dry_run=True)
 

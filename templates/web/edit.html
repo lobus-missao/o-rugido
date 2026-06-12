@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Editar dispatch #{{ view.dispatch_id }} — News Radar</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --border: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --ok: #16a34a;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 18px; margin: 0 0 4px 0; }
+    .meta { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+    .meta a { color: var(--muted); text-decoration: underline; }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #1e293b;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .banner {
+      background: rgba(22, 163, 74, 0.15);
+      border: 1px solid var(--ok);
+      color: var(--ok);
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      margin-top: 14px;
+      font-weight: 600;
+    }
+    input[type=text], textarea {
+      width: 100%;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 15px;
+      font-family: inherit;
+    }
+    input[type=text]:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .preview {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .preview img {
+      max-width: 100%;
+      max-height: 260px;
+      border-radius: 8px;
+      border: 2px solid var(--accent);
+      align-self: flex-start;
+      background: var(--surface);
+    }
+    .preview .empty {
+      padding: 30px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }
+    .search-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .search-bar input { flex: 1; }
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .gallery .tile {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      background: var(--surface);
+      border: 2px solid transparent;
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .gallery .tile img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .gallery .tile.selected {
+      border-color: var(--accent);
+    }
+    .gallery .tile.selected::after {
+      content: "✓";
+      position: absolute;
+      top: 4px; right: 6px;
+      background: var(--accent);
+      color: white;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: bold;
+    }
+    .gallery .loading {
+      grid-column: 1 / -1;
+      padding: 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 24px;
+      position: sticky;
+      bottom: 0;
+      background: linear-gradient(to top, var(--bg) 70%, transparent);
+      padding: 16px 0;
+    }
+    .actions button { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Editar publicação</h1>
+    <div class="meta">
+      <span class="status">{{ view.status_label }}</span>
+      &middot; #{{ view.dispatch_id }}
+      {% if view.source %} &middot; {{ view.source }}{% endif %}
+      {% if view.article_url %}
+        &middot; <a href="{{ view.article_url }}" target="_blank" rel="noopener">notícia original</a>
+      {% endif %}
+    </div>
+
+    {% if view.saved %}
+      <div class="banner">
+        Alterações salvas.
+        {% if view.regenerated %}O card foi regerado e atualizado no Telegram.{% endif %}
+      </div>
+    {% endif %}
+
+    <form method="post" action="/edit?token={{ view.token }}">
+      <label for="title">Título</label>
+      <input type="text" id="title" name="title" value="{{ view.title }}" maxlength="200">
+
+      <label for="summary">Resumo</label>
+      <textarea id="summary" name="summary" maxlength="500">{{ view.summary }}</textarea>
+
+      <label>Imagem do card</label>
+      <input type="hidden" id="image_url" name="image_url" value="{{ view.image_url }}">
+      <div class="preview">
+        {% if view.image_url %}
+          <img id="preview" src="{{ view.image_url }}" alt="">
+        {% else %}
+          <div class="empty" id="preview-empty">Nenhuma imagem selecionada</div>
+        {% endif %}
+      </div>
+
+      <div class="search-bar">
+        <input type="text" id="search-q" placeholder="Buscar imagens por outro termo..." value="{{ view.title }}">
+        <button type="button" id="search-btn" class="secondary">Buscar</button>
+      </div>
+
+      <div class="gallery" id="gallery">
+        {% if gallery %}
+          {% for item in gallery %}
+            <div class="tile" data-url="{{ item.url }}" {% if item.url == view.image_url %}class="tile selected"{% endif %}>
+              <img src="{{ item.thumbnail }}" alt="" loading="lazy">
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="loading">Sem resultados — tente buscar por outro termo.</div>
+        {% endif %}
+      </div>
+
+      <div class="actions">
+        <button type="submit">Salvar</button>
+      </div>
+    </form>
+  </div>
+
+<script>
+(function() {
+  const gallery = document.getElementById('gallery');
+  const imageInput = document.getElementById('image_url');
+  const preview = document.getElementById('preview');
+  const previewEmpty = document.getElementById('preview-empty');
+  const searchInput = document.getElementById('search-q');
+  const searchBtn = document.getElementById('search-btn');
+
+  function selectImage(url) {
+    imageInput.value = url || '';
+    if (url) {
+      if (preview) {
+        preview.src = url;
+      } else if (previewEmpty) {
+        const img = document.createElement('img');
+        img.id = 'preview';
+        img.src = url;
+        previewEmpty.replaceWith(img);
+      }
+    }
+    document.querySelectorAll('.gallery .tile').forEach(t => {
+      t.classList.toggle('selected', t.dataset.url === url);
+    });
+  }
+
+  gallery.addEventListener('click', e => {
+    const tile = e.target.closest('.tile');
+    if (tile) selectImage(tile.dataset.url);
+  });
+
+  async function refreshGallery(q) {
+    gallery.innerHTML = '<div class="loading">Buscando...</div>';
+    try {
+      const r = await fetch('/api/image-search?q=' + encodeURIComponent(q) + '&limit=18');
+      const data = await r.json();
+      if (!data.ok || !data.results || !data.results.length) {
+        gallery.innerHTML = '<div class="loading">Sem resultados.</div>';
+        return;
+      }
+      gallery.innerHTML = '';
+      const selected = imageInput.value;
+      data.results.forEach(item => {
+        const tile = document.createElement('div');
+        tile.className = 'tile' + (item.url === selected ? ' selected' : '');
+        tile.dataset.url = item.url;
+        const img = document.createElement('img');
+        img.src = item.thumbnail || item.url;
+        img.loading = 'lazy';
+        img.alt = '';
+        tile.appendChild(img);
+        gallery.appendChild(tile);
+      });
+    } catch (err) {
+      gallery.innerHTML = '<div class="loading">Erro ao buscar.</div>';
+    }
+  }
+
+  searchBtn.addEventListener('click', () => refreshGallery(searchInput.value.trim()));
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); refreshGallery(searchInput.value.trim()); }
+  });
+})();
+</script>
+</body>
+</html>

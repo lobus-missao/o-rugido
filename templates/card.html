@@ -78,15 +78,9 @@
   .footer {
     border-top: 1px solid #f1f5f9;
     padding: 9px 18px;
-    display: flex; align-items: center; justify-content: space-between;
     background: #fafafa;
   }
   .meta { font-size: 10.5px; color: #94a3b8; }
-  .score-wrap { display: flex; align-items: center; gap: 5px; }
-  .score-label { font-size: 10px; color: #94a3b8; }
-  .score-bar-bg { width: 70px; height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
-  .score-bar { height: 100%; background: {{prioridade_cor}}; border-radius: 3px; width: calc({{score}} * 1%); }
-  .score-num { font-size: 11px; font-weight: 700; color: #475569; }
 </style>
 </head>
 <body>
@@ -96,7 +90,6 @@
       <span class="badge">{{prioridade}}</span>
       <span class="editoria">{{editoria}}</span>
     </div>
-    <span class="ia-badge">{{ia_badge}}</span>
   </div>
 
   <div class="hero{{hero_empty_class}}" style="background-image:url('{{image_url}}');"></div>
@@ -117,11 +110,6 @@
 
   <div class="footer">
     <span class="meta">{{fonte}} · {{data}}</span>
-    <div class="score-wrap">
-      <span class="score-label">score</span>
-      <div class="score-bar-bg"><div class="score-bar"></div></div>
-      <span class="score-num">{{score}}</span>
-    </div>
   </div>
 </div>
 </body>

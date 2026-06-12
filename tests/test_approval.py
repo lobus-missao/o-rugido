@@ -77,7 +77,7 @@ def _fake_connect():
 # ── approve_article ───────────────────────────────────────────────────────────
 
 class TestApproveArticle:
-    def test_retorna_article_approved(self, monkeypatch):
+    def test_retorna_ready_to_publish(self, monkeypatch):
         updates = []
         monkeypatch.setattr(dispatch, "get_dispatch", lambda _: _make_dispatch("pending_article"))
         monkeypatch.setattr(dispatch, "update_dispatch", lambda _, **kw: updates.append(kw))
@@ -85,7 +85,7 @@ class TestApproveArticle:
 
         result = dispatch.approve_article(99, "Editor X", generate_card=False, dry_run=True)
 
-        assert result["status"] == "article_approved"
+        assert result["status"] == "ready_to_publish"
 
     def test_atualiza_article_reviewed_by(self, monkeypatch):
         updates = []
