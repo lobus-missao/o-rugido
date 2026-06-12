@@ -19,19 +19,21 @@ PRIORITY_COLOR = {
     "baixa":   "#16a34a",
     "ruido":   "#6b7280",
 }
-PRIORITY_ICON = {
-    "critica": "🔴",
-    "alta":    "🟠",
-    "media":   "🟡",
-    "baixa":   "🟢",
-    "ruido":   "⚫",
+
+PRIORITY_LABEL = {
+    "critica": "Critica",
+    "alta":    "Alta",
+    "media":   "Media",
+    "baixa":   "Baixa",
+    "ruido":   "Ruido",
 }
+
 EDITORIAL_LABELS = {
     "discovered":      "Descoberto",
     "selected":        "Selecionado",
     "card_generated":  "Card gerado",
     "approved":        "Aprovado",
-    "ready_to_publish":"Pronto para publicar",
+    "ready_to_publish": "Pronto para publicar",
     "rejected":        "Rejeitado",
     "published":       "Publicado",
     "archived":        "Arquivado",
@@ -49,7 +51,7 @@ def run_cli(*args, timeout: int = 120) -> dict:
             capture_output=True, text=True, cwd=_ROOT, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
-        return {"ok": False, "error": f"Timeout após {timeout}s"}
+        return {"ok": False, "error": f"Timeout apos {timeout}s"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:300]}
 
@@ -69,16 +71,21 @@ def fmt_dt(value, chars: int = 16) -> str:
     return str(value)[:chars]
 
 
-def priority_badge(priority: str) -> str:
-    icon = PRIORITY_ICON.get(priority or "", "⚪")
-    return f"{icon} {(priority or '-').upper()}"
+def priority_pill(priority: str) -> str:
+    """Pill discreta com cor da prioridade. Retorna HTML."""
+    color = PRIORITY_COLOR.get(priority, "#6b7280")
+    label = PRIORITY_LABEL.get(priority, (priority or "-").capitalize())
+    return (
+        f'<span style="display:inline-block;padding:2px 8px;border-radius:10px;'
+        f'background:{color}15;color:{color};font-size:11px;font-weight:600;'
+        f'border:1px solid {color}30;">{label}</span>'
+    )
 
 
 def article_card(art: dict, show_actions: bool = True, key_prefix: str = "") -> None:
     from news_radar.repositories.dashboard_queries import update_editorial_status
 
     priority = art.get("priority") or ""
-    color = PRIORITY_COLOR.get(priority, "#6b7280")
     score = float(art.get("final_score_piaui") or 0)
     title = art.get("title") or ""
     source = art.get("source") or ""
@@ -87,50 +94,49 @@ def article_card(art: dict, show_actions: bool = True, key_prefix: str = "") -> 
     art_id = art.get("id", "")
     key = f"{key_prefix}_{art_id[:8]}"
 
-    with st.container():
-        st.markdown(
-            f'<div style="border-left:4px solid {color};padding:4px 10px;margin-bottom:6px;">'
-            f'<span style="color:{color};font-weight:700;font-size:11px;">'
-            f'{priority_badge(priority)}</span>'
-            f'<span style="color:#94a3b8;font-size:11px;margin-left:12px;">'
-            f'{source} · {pub}</span>'
-            f'</div>',
-            unsafe_allow_html=True,
+    with st.container(border=True):
+        meta_html = (
+            f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">'
+            f'{priority_pill(priority)}'
+            f'<span style="color:#64748b;font-size:12px;">{source}</span>'
+            f'<span style="color:#94a3b8;font-size:12px;">{pub}</span>'
+            f'<span style="margin-left:auto;color:#475569;font-size:12px;font-weight:600;">'
+            f'Score {score:.0f}</span>'
+            f'</div>'
         )
+        st.markdown(meta_html, unsafe_allow_html=True)
 
-        col_txt, col_score = st.columns([4, 1])
-        with col_txt:
-            if url:
-                st.markdown(f"**[{title[:120]}]({url})**")
-            else:
-                st.markdown(f"**{title[:120]}**")
-            summary = (art.get("summary") or "")[:160]
-            if summary:
-                st.caption(summary)
+        if url:
+            st.markdown(f"**[{title[:140]}]({url})**")
+        else:
+            st.markdown(f"**{title[:140]}**")
 
-        with col_score:
-            st.metric("Score", f"{score:.0f}")
+        summary = (art.get("summary") or "")[:200]
+        if summary:
+            st.markdown(
+                f'<div style="color:#475569;font-size:13px;margin-top:4px;">{summary}</div>',
+                unsafe_allow_html=True,
+            )
 
         if show_actions:
-            c1, c2, c3 = st.columns(3)
+            st.write("")
+            c1, c2, c3, _ = st.columns([1, 1, 1, 3])
             with c1:
-                if st.button("🎯 Selecionar", key=f"sel_{key}"):
+                if st.button("Selecionar", key=f"sel_{key}", use_container_width=True):
                     update_editorial_status(art_id, "selected")
                     st.rerun()
             with c2:
-                if st.button("❌ Rejeitar", key=f"rej_{key}"):
+                if st.button("Rejeitar", key=f"rej_{key}", use_container_width=True):
                     update_editorial_status(art_id, "rejected")
                     st.rerun()
             with c3:
-                if st.button("📦 Arquivar", key=f"arch_{key}"):
+                if st.button("Arquivar", key=f"arch_{key}", use_container_width=True):
                     update_editorial_status(art_id, "archived")
                     st.rerun()
-
-        st.divider()
 
 
 def sidebar_controls() -> None:
     with st.sidebar:
         st.markdown("### Controles")
-        if st.button("🔄 Atualizar"):
+        if st.button("Atualizar", use_container_width=True):
             st.rerun()

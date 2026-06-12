@@ -9,25 +9,39 @@ st.set_page_config(page_title="News Radar", layout="wide")
 
 sidebar_controls()
 
-st.title("News Radar")
-st.caption("Pipeline editorial Piauí")
+with st.sidebar:
+    st.markdown("### Listagem")
+    limit = st.number_input(
+        "Artigos a exibir",
+        min_value=5,
+        max_value=100,
+        value=20,
+        step=5,
+        help="Quantos artigos mostrar na lista, ordenados por score.",
+    )
 
-col_a, col_b, col_c = st.columns(3)
+st.title("News Radar")
+st.caption("Pipeline editorial Piaui")
+
+col_a, col_b, _ = st.columns([1, 1, 4])
 with col_a:
-    if st.button("📥 Coletar agora"):
+    if st.button("Coletar agora", use_container_width=True):
         result = run_cli("collect", "--limit-per-feed", "30", timeout=180)
         if result["ok"]:
-            st.success(f"Coleta OK · {result.get('inserted', 0)} novos · {result.get('updated', 0)} atualizados")
+            st.success(
+                f"Coleta OK. {result.get('inserted', 0)} novos, "
+                f"{result.get('updated', 0)} atualizados"
+            )
         else:
             st.error(result.get("error", "falhou"))
 
 with col_b:
-    if st.button("🔢 Recalcular scores"):
+    if st.button("Recalcular scores", use_container_width=True):
         result = run_cli("rank", timeout=120)
-        st.success(result.get("output", "OK")) if result["ok"] else st.error(result.get("error"))
-
-with col_c:
-    limit = st.number_input("Top N", min_value=5, max_value=100, value=20, step=5)
+        if result["ok"]:
+            st.success(result.get("output", "OK"))
+        else:
+            st.error(result.get("error"))
 
 st.divider()
 
@@ -36,6 +50,6 @@ articles = top_articles(scope="piaui", limit=int(limit))
 if not articles:
     st.info("Nenhum artigo. Rode `collect` + `rank`.")
 else:
-    st.subheader(f"Top {len(articles)} artigos · Piauí")
+    st.subheader(f"{len(articles)} artigos")
     for art in articles:
         article_card(art, key_prefix="home")
