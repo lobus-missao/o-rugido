@@ -99,6 +99,6 @@ jobs:
           git fetch origin
           git checkout homologation
           git reset --hard origin/homologation
-          docker compose -f docker-compose.yml up -d --build
+          docker compose -f docker-compose.yml up -d --build --remove-orphans
           docker image prune -f
           EOF
