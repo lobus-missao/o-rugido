@@ -27,3 +27,4 @@ docs/n8n-workflows/
 Thumbs.db
 *.log
 logs/
+.tmp_deploy_key/

@@ -38,7 +38,7 @@ jobs:
         env:
           POSTGRES_USER: news
           POSTGRES_PASSWORD: senha_ci
-          POSTGRES_DB: news_radar
+          POSTGRES_DB: o_rugido
         ports:
           - 5432:5432
         options: >-
@@ -48,12 +48,12 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://news:senha_ci@localhost:5432/news_radar
+      DATABASE_URL: postgresql://news:senha_ci@localhost:5432/o_rugido
       POSTGRES_USER: news
       POSTGRES_PASSWORD: senha_ci
       TELEGRAM_BOT_TOKEN: dummy
       TELEGRAM_CHAT_ID: "0"
-      NEWS_RADAR_DRY_RUN: "1"
+      O_RUGIDO_DRY_RUN: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -73,3 +73,28 @@ jobs:
 
       - name: Run pytest
         run: pytest -ra
+
+  deploy-homolog:
+    name: Deploy homolog
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/homologation' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configura SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Deploy no servidor
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} bash <<'EOF'
+          set -e
+          cd ${{ secrets.DEPLOY_PATH }}
+          git fetch origin
+          git checkout homologation
+          git pull origin homologation
+          docker compose -f docker-compose.yml up -d --build
+          docker image prune -f
+          EOF
