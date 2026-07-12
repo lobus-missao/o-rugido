@@ -107,3 +107,26 @@ def update_editorial_status(article_id: str, status: str) -> None:
             "UPDATE articles SET editorial_status = %s, updated_at = %s WHERE id = %s",
             (status, utc_now(), article_id),
         )
+
+
+@ttl_cache(seconds=30)
+def editorial_counts_today() -> dict[str, int]:
+    """Contagens por editorial_status considerando updated_at do dia atual."""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT editorial_status, COUNT(*) AS n FROM articles "
+            "WHERE updated_at >= CURRENT_DATE "
+            "GROUP BY editorial_status"
+        )
+        rows = cur.fetchall()
+    return {r["editorial_status"]: int(r["n"]) for r in rows}
+
+
+@ttl_cache(seconds=30)
+def pending_approval_total() -> int:
+    """Total de artigos aguardando aprovação humana (independe de data)."""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) AS n FROM articles WHERE editorial_status = 'pending_approval'"
+        )
+        return int(cur.fetchone()["n"] or 0)
