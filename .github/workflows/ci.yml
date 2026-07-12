@@ -88,10 +88,14 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
       - name: Deploy no servidor
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} bash <<'EOF'
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" DEPLOY_PATH="$DEPLOY_PATH" bash <<'EOF'
           set -e
-          cd ${{ secrets.DEPLOY_PATH }}
+          cd "$DEPLOY_PATH"
           git fetch origin
           git checkout homologation
           git pull origin homologation
