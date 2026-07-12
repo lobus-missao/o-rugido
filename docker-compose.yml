@@ -117,3 +117,8 @@ services:
 volumes:
   pgdata:
   n8n_data:
+
+networks:
+  default:
+    name: missao-network
+    driver: bridge
