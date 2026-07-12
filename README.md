@@ -1,4 +1,4 @@
-# News Radar
+# Portal O Rugido
 
 Pipeline editorial para Piauí: coleta RSS, ranqueia por relevância, gera card visual, aprovação humana via Telegram e publicação em Telegram + Instagram.
 
@@ -13,7 +13,7 @@ Pipeline editorial para Piauí: coleta RSS, ranqueia por relevância, gera card 
 Estrutura layered, camadas independentes:
 
 ```
-src/news_radar/
+src/o_rugido/
 ├── api/          rotas Flask (5 endpoints — só extração + scoring)
 ├── core/         db, config, text_utils, cache
 ├── services/     casos de uso (ingestion, ranker, editorial, rendering, classifier)
@@ -46,7 +46,7 @@ docker compose up -d postgres
 Aplicar schema:
 
 ```powershell
-python -m news_radar.cli init-db
+python -m o_rugido.cli init-db
 ```
 
 Configurar `.env` a partir de `.env.example`.
@@ -54,12 +54,12 @@ Configurar `.env` a partir de `.env.example`.
 ## Uso
 
 ```powershell
-python -m news_radar.cli collect        # coleta RSS
-python -m news_radar.cli rank           # recalcula scores
-python -m news_radar.cli show           # lista top artigos
-python -m news_radar.cli make-card      # gera PNG dos artigos pendentes
-python -m news_radar.cli dispatch       # cria envio editorial
-python -m news_radar.cli stats          # métricas do banco
+python -m o_rugido.cli collect        # coleta RSS
+python -m o_rugido.cli rank           # recalcula scores
+python -m o_rugido.cli show           # lista top artigos
+python -m o_rugido.cli make-card      # gera PNG dos artigos pendentes
+python -m o_rugido.cli dispatch       # cria envio editorial
+python -m o_rugido.cli stats          # métricas do banco
 
 streamlit run dashboard/app.py          # dashboard (aprovação + saúde)
 python api_server.py                    # API HTTP (porta 8888)

@@ -1,4 +1,4 @@
-# Guia de Deploy — News Radar RSS
+# Guia de Deploy — Portal O Rugido
 
 > Passo a passo para subir o sistema em desenvolvimento local ou na plataforma da Missão (homolog/prod).
 
@@ -34,8 +34,8 @@ Templates de `.env`:
 ### 1. Clonar e configurar ambiente
 
 ```bash
-git clone <repo> news-radar-rss
-cd news-radar-rss
+git clone <repo> o-rugido-rss
+cd o-rugido-rss
 
 python -m venv .venv
 .venv\Scripts\activate       # Windows
@@ -66,15 +66,15 @@ docker compose up -d --build
 ### 4. Inicializar banco e seed
 
 ```bash
-python -m news_radar.cli init-db
+python -m o_rugido.cli init-db
 python scripts/seed_sources.py
 ```
 
 ### 5. Primeira coleta
 
 ```bash
-python -m news_radar.cli collect --limit-per-feed 10
-python -m news_radar.cli rank
+python -m o_rugido.cli collect --limit-per-feed 10
+python -m o_rugido.cli rank
 ```
 
 ### 6. Rodar API e Dashboard (se postgres rodando isolado)
@@ -121,20 +121,20 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ### 3. Inicializar banco (primeira vez)
 
 ```bash
-docker exec news-radar-app python -m news_radar.cli init-db
-docker exec news-radar-app python scripts/seed_sources.py
+docker exec o-rugido-app python -m o_rugido.cli init-db
+docker exec o-rugido-app python scripts/seed_sources.py
 ```
 
 ### 4. Verificar saúde
 
 ```bash
-docker exec news-radar-app curl -s http://localhost:8888/health
+docker exec o-rugido-app curl -s http://localhost:8888/health
 # Esperado: {"status": "ok", ...}
 ```
 
 Externamente (via NGINX Proxy Manager + Cloudflare):
 ```bash
-curl https://news-radar-homolog.seudominio.com.br/health
+curl https://o-rugido-homolog.seudominio.com.br/health
 ```
 
 ---
@@ -148,7 +148,7 @@ git pull
 docker compose -f docker-compose.prod.yml --env-file .env.homolog up -d --build app dashboard
 
 # Aplicar migrations pendentes (idempotente)
-docker exec news-radar-app python -m news_radar.cli init-db
+docker exec o-rugido-app python -m o_rugido.cli init-db
 ```
 
 ---
@@ -161,7 +161,7 @@ Se o build falhar na etapa do Playwright:
 ```bash
 docker build --network=host .
 
-docker exec news-radar-app python -c "from news_radar.services.rendering import is_playwright_available; print('Playwright OK:', is_playwright_available())"
+docker exec o-rugido-app python -c "from o_rugido.services.rendering import is_playwright_available; print('Playwright OK:', is_playwright_available())"
 ```
 
 ---
@@ -170,15 +170,15 @@ docker exec news-radar-app python -c "from news_radar.services.rendering import 
 
 ```bash
 # Backup (dev local)
-docker exec news-radar-rss-postgres-1 \
-  pg_dump -U news news_radar > backup_$(date +%Y%m%d_%H%M%S).sql
+docker exec o-rugido-rss-postgres-1 \
+  pg_dump -U news o_rugido > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Backup (homolog/prod) — direto no postgres compartilhado da plataforma
 docker exec <container-postgres-plataforma> \
-  pg_dump -U <usuario> news_radar > backup.sql
+  pg_dump -U <usuario> o_rugido > backup.sql
 
 # Restore
-psql "postgresql://news:senha@localhost:5432/news_radar" < backup.sql
+psql "postgresql://news:senha@localhost:5432/o_rugido" < backup.sql
 ```
 
 ---
@@ -187,14 +187,14 @@ psql "postgresql://news:senha@localhost:5432/news_radar" < backup.sql
 
 ```env
 # Scheduler interno (1 = APScheduler, 0 = N8N agenda)
-NEWS_RADAR_SCHEDULER=0
+O_RUGIDO_SCHEDULER=0
 
 # Escopo e tamanho do dispatch automático
-NEWS_RADAR_DISPATCH_SCOPE=piaui
-NEWS_RADAR_DISPATCH_TOP=3
+O_RUGIDO_DISPATCH_SCOPE=piaui
+O_RUGIDO_DISPATCH_TOP=3
 
 # Dry-run global (sem envios reais ao Telegram)
-NEWS_RADAR_DRY_RUN=0
+O_RUGIDO_DRY_RUN=0
 
 # Chromium customizado
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
@@ -208,7 +208,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 |---|---|---|
 | `app` não sobe | Banco indisponível | Conferir `DATABASE_URL` e se postgres responde |
 | `playwright install` falha no build | Sem internet | `docker build --network=host .` |
-| Dashboard 502 | Container não iniciou | `docker logs news-radar-dashboard` |
+| Dashboard 502 | Container não iniciou | `docker logs o-rugido-dashboard` |
 | Cards sem PNG | Playwright não instalado | Ver seção "Playwright no Docker" |
 | HTTPS não funciona | DNS / NGINX Proxy Manager | Conferir com a infra da plataforma |
 | `missao-network` não existe | Rede não criada pela infra | Pedir à infra para criar/expor a rede |
