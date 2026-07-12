@@ -4,7 +4,7 @@ Fase 2 — gerenciamento de fontes via banco, coexistindo com feeds.yaml.
 """
 from __future__ import annotations
 
-from news_radar.core.db import connect, utc_now
+from o_rugido.core.db import connect, utc_now
 
 
 def list_sources(

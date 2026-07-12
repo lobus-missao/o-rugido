@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: news_radar
+      POSTGRES_DB: o_rugido
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -15,18 +15,20 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
+  o-rugido-app:
+    container_name: o-rugido-app
+    init: true
     build: .
     command: python api_server.py
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/news_radar
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/o_rugido
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
-      NEWS_RADAR_PUBLIC_URL: ${NEWS_RADAR_PUBLIC_URL:-}
+      O_RUGIDO_PUBLIC_URL: ${O_RUGIDO_PUBLIC_URL:-}
       SEARXNG_URL: http://searxng:8080
     volumes:
       - ./data:/app/data
@@ -45,7 +47,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/news_radar
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/o_rugido
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
     volumes:
@@ -68,8 +70,8 @@ services:
       N8N_EDITOR_BASE_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
       N8N_PROTOCOL: https
       N8N_HOST: ${N8N_HOST:-localhost}
-      NEWS_RADAR_API_URL: http://app:8888
-      NEWS_RADAR_PUBLIC_URL: ${NEWS_RADAR_PUBLIC_URL:-}
+      O_RUGIDO_API_URL: http://o-rugido-app:8888
+      O_RUGIDO_PUBLIC_URL: ${O_RUGIDO_PUBLIC_URL:-}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     ports:
       - "5678:5678"
@@ -81,7 +83,7 @@ services:
     image: searxng/searxng:latest
     environment:
       SEARXNG_BASE_URL: http://searxng:8080/
-      INSTANCE_NAME: news-radar
+      INSTANCE_NAME: o-rugido
     volumes:
       - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
     restart: unless-stopped
@@ -100,9 +102,9 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    command: tunnel --no-autoupdate --url http://app:8888
+    command: tunnel --no-autoupdate --url http://o-rugido-app:8888
     depends_on:
-      - app
+      - o-rugido-app
     restart: unless-stopped
 
   cloudflared-n8n:

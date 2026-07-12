@@ -10,8 +10,8 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 import os, requests
-from news_radar.repositories.articles import update_card_status
-from news_radar.services.editorial import (
+from o_rugido.repositories.articles import update_card_status
+from o_rugido.services.editorial import (
     handle_callback_action,
 )
 

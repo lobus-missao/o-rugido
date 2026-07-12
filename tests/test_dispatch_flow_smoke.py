@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
-from news_radar.services import editorial as dispatch
+from o_rugido.services import editorial as dispatch
 
 
 class FakeCursor:
@@ -86,7 +86,7 @@ def test_generate_card_for_dispatch_sets_pending_card(monkeypatch, tmp_path):
     })
     monkeypatch.setattr(dispatch, "update_dispatch", lambda dispatch_id, **fields: updates.append(fields))
 
-    import news_radar.services.rendering as card_renderer
+    import o_rugido.services.rendering as card_renderer
     monkeypatch.setattr(
         card_renderer,
         "render_single_card",

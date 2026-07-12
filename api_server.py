@@ -1,4 +1,4 @@
-from news_radar.api.app import create_app
+from o_rugido.api.app import create_app
 
 app = create_app()
 

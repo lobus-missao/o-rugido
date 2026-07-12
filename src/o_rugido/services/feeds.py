@@ -11,7 +11,7 @@ from typing import Any
 
 import yaml
 
-from news_radar.core.config import FEEDS_PATH
+from o_rugido.core.config import FEEDS_PATH
 
 
 def load_feeds_config(path: Path = FEEDS_PATH) -> dict[str, Any]:

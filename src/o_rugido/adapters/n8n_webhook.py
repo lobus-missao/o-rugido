@@ -5,7 +5,7 @@ from typing import Any
 
 import requests
 
-from news_radar.core.config import N8N_WEBHOOK_URL
+from o_rugido.core.config import N8N_WEBHOOK_URL
 
 _logger = logging.getLogger(__name__)
 

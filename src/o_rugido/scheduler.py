@@ -1,8 +1,8 @@
 """
 Scheduler interno opcional — APScheduler BackgroundScheduler.
 
-Ativação:  NEWS_RADAR_SCHEDULER=1  (no .env ou variável de ambiente)
-Padrão:    desativado (NEWS_RADAR_SCHEDULER=0 ou não definido)
+Ativação:  O_RUGIDO_SCHEDULER=1  (no .env ou variável de ambiente)
+Padrão:    desativado (O_RUGIDO_SCHEDULER=0 ou não definido)
 
 O n8n continua como scheduler principal enquanto esta variável não for ativada.
 Ambos podem coexistir: o guard de idempotência em create_dispatch() garante
@@ -17,7 +17,7 @@ que o duplo disparo não resulte em mensagens duplicadas no Telegram.
     um scheduler independente → N coletas e N dispatches paralelos.
     Solução para multi-worker (não implementada nesta fase):
       - APScheduler com job store PostgreSQL (exclusive locking), ou
-      - Processo separado: `python -m news_radar.scheduler`, ou
+      - Processo separado: `python -m o_rugido.scheduler`, ou
       - gunicorn com --preload e --workers 1 para o processo de scheduler.
 """
 from __future__ import annotations
@@ -86,8 +86,8 @@ def _job_dispatch(edition: str, scope: str, top: int) -> None:
 
 
 def _is_enabled() -> bool:
-    """Retorna True se NEWS_RADAR_SCHEDULER=1 (ou true/yes/on)."""
-    return os.getenv("NEWS_RADAR_SCHEDULER", "").lower() in {"1", "true", "yes", "on"}
+    """Retorna True se O_RUGIDO_SCHEDULER=1 (ou true/yes/on)."""
+    return os.getenv("O_RUGIDO_SCHEDULER", "").lower() in {"1", "true", "yes", "on"}
 
 
 def _in_test_context() -> bool:
@@ -99,13 +99,13 @@ def create_scheduler():
     """Cria e configura o scheduler com os 4 jobs padrão (não inicia).
 
     Configuração via variáveis de ambiente:
-      NEWS_RADAR_DISPATCH_SCOPE  — scope do dispatch (padrão: piaui)
-      NEWS_RADAR_DISPATCH_TOP    — top N artigos por edição (padrão: 3)
+      O_RUGIDO_DISPATCH_SCOPE  — scope do dispatch (padrão: piaui)
+      O_RUGIDO_DISPATCH_TOP    — top N artigos por edição (padrão: 3)
     """
     from apscheduler.schedulers.background import BackgroundScheduler
 
-    scope = os.getenv("NEWS_RADAR_DISPATCH_SCOPE", "piaui")
-    top = int(os.getenv("NEWS_RADAR_DISPATCH_TOP", "3"))
+    scope = os.getenv("O_RUGIDO_DISPATCH_SCOPE", "piaui")
+    top = int(os.getenv("O_RUGIDO_DISPATCH_TOP", "3"))
 
     sched = BackgroundScheduler(timezone="America/Fortaleza")
 
@@ -144,8 +144,8 @@ def start_scheduler() -> bool:
 
     if not _is_enabled():
         _logger.debug(
-            "Scheduler: NEWS_RADAR_SCHEDULER != 1 — desativado. "
-            "Defina NEWS_RADAR_SCHEDULER=1 para ativar."
+            "Scheduler: O_RUGIDO_SCHEDULER != 1 — desativado. "
+            "Defina O_RUGIDO_SCHEDULER=1 para ativar."
         )
         return False
 
@@ -159,7 +159,7 @@ def start_scheduler() -> bool:
     job_ids = [j.id for j in _scheduler.get_jobs()]
     _logger.info(
         "Scheduler interno iniciado. Jobs registrados: %s. "
-        "Para desativar: NEWS_RADAR_SCHEDULER=0 e reiniciar.",
+        "Para desativar: O_RUGIDO_SCHEDULER=0 e reiniciar.",
         job_ids,
     )
     return True

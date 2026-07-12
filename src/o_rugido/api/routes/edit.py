@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, render_template, request
 
-from news_radar.services.editorial import (
+from o_rugido.services.editorial import (
     apply_edit_and_refresh,
     edit_url_for,
     ensure_edit_token,
     get_dispatch,
     get_dispatch_by_token,
 )
-from news_radar.services.image_search import search_images
+from o_rugido.services.image_search import search_images
 
 bp = Blueprint("edit", __name__)
 

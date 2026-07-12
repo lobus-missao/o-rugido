@@ -40,4 +40,4 @@ RUN playwright install chromium
 COPY . .
 RUN pip install --no-cache-dir -e .
 
-CMD ["news-radar", "--help"]
+CMD ["o-rugido", "--help"]

@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 from components import fmt_dt, sidebar_controls
 
-from news_radar.repositories.dashboard_queries import (
+from o_rugido.repositories.dashboard_queries import (
     daily_article_activity,
     pipeline_health,
     recent_editorial_actions,

@@ -15,7 +15,7 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from news_radar.services import editorial as dispatch
+from o_rugido.services import editorial as dispatch
 
 # ── Helpers de fixture ────────────────────────────────────────────────────────
 
@@ -393,7 +393,7 @@ class TestTryRecordEditorialAction:
             raise RuntimeError("DB explodiu")
 
         monkeypatch.setattr(
-            "news_radar.services.editorial._try_record_editorial_action",
+            "o_rugido.services.editorial._try_record_editorial_action",
             lambda **kw: None,
         )
         # Não deve lançar
@@ -405,12 +405,12 @@ class TestTryRecordEditorialAction:
         def fake_record(**kw):
             captured.append(kw)
 
-        import news_radar.services.editorial as d_module
+        import o_rugido.services.editorial as d_module
         with patch.object(d_module, "_try_record_editorial_action",
                           side_effect=lambda **kw: captured.append(kw)):
             pass
 
-        from news_radar.repositories import editorial_actions
+        from o_rugido.repositories import editorial_actions
         original = editorial_actions.record_editorial_action
         try:
             calls = []

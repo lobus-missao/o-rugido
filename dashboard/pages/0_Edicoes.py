@@ -5,8 +5,8 @@ from datetime import date
 import streamlit as st
 from components import EDITORIAL_LABELS, fmt_dt, run_cli, sidebar_controls
 
-from news_radar.repositories.dashboard_queries import dispatch_audit_history
-from news_radar.services.editorial import (
+from o_rugido.repositories.dashboard_queries import dispatch_audit_history
+from o_rugido.services.editorial import (
     EDITIONS,
     approve_article,
     approve_card,

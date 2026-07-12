@@ -19,13 +19,13 @@ if str(SRC) not in sys.path:
 
 class TestMigrationSQL:
     def test_migration_sql_e_dict_com_chaves_string(self):
-        from news_radar.core.db import MIGRATION_SQL
+        from o_rugido.core.db import MIGRATION_SQL
         assert isinstance(MIGRATION_SQL, dict)
         for key in MIGRATION_SQL:
             assert isinstance(key, str), f"Chave deve ser str: {key!r}"
 
     def test_migration_sql_tem_entries_de_todas_as_fases(self):
-        from news_radar.core.db import MIGRATION_SQL
+        from o_rugido.core.db import MIGRATION_SQL
         keys = list(MIGRATION_SQL.keys())
         assert any("editorial_status" in k for k in keys), "Falta migration de editorial_status"
         assert any("card_html_path" in k for k in keys), "Falta migration Fase 7"
@@ -33,7 +33,7 @@ class TestMigrationSQL:
 
     def test_migration_sql_drop_column_apenas_em_migrations_de_corte(self):
         """DROP COLUMN é permitido em v11_* (corte Brasil/Teresina) e v14_* (corte IA)."""
-        from news_radar.core.db import MIGRATION_SQL
+        from o_rugido.core.db import MIGRATION_SQL
         for key, stmt in MIGRATION_SQL.items():
             if "DROP COLUMN" in stmt.upper():
                 assert key.startswith(("v11_", "v14_")), (
@@ -42,7 +42,7 @@ class TestMigrationSQL:
 
     def test_migration_sql_drop_table_apenas_em_v12(self):
         """DROP TABLE só permitido em v12_* (remoção de tabelas legado)."""
-        from news_radar.core.db import MIGRATION_SQL
+        from o_rugido.core.db import MIGRATION_SQL
         for key, stmt in MIGRATION_SQL.items():
             if "DROP TABLE" in stmt.upper():
                 assert key.startswith("v12_"), (
@@ -50,12 +50,12 @@ class TestMigrationSQL:
                 )
 
     def test_todas_migrations_tem_valor_nao_vazio(self):
-        from news_radar.core.db import MIGRATION_SQL
+        from o_rugido.core.db import MIGRATION_SQL
         for key, stmt in MIGRATION_SQL.items():
             assert stmt.strip(), f"Migration '{key}' tem valor vazio"
 
     def test_chaves_de_migration_sao_unicas(self):
-        from news_radar.core.db import MIGRATION_SQL
+        from o_rugido.core.db import MIGRATION_SQL
         keys = list(MIGRATION_SQL.keys())
         assert len(keys) == len(set(keys)), "Chaves duplicadas em MIGRATION_SQL"
 
@@ -65,7 +65,7 @@ class TestMigrationSQL:
 class TestEnsureDatetimeColumns:
     def test_nao_executa_alter_quando_ja_e_timestamptz(self):
         """Colunas já TIMESTAMPTZ não devem ser alteradas."""
-        from news_radar.core.db import _ensure_datetime_columns
+        from o_rugido.core.db import _ensure_datetime_columns
 
         executed_alters = []
 
@@ -85,7 +85,7 @@ class TestEnsureDatetimeColumns:
 
     def test_executa_alter_quando_tipo_e_texto(self):
         """Colunas TEXT precisam ser alteradas para TIMESTAMPTZ."""
-        from news_radar.core.db import _ensure_datetime_columns
+        from o_rugido.core.db import _ensure_datetime_columns
 
         executed_alters = []
 
@@ -106,7 +106,7 @@ class TestEnsureDatetimeColumns:
 
     def test_nao_altera_coluna_inexistente(self):
         """Coluna não existente (fetchone = None) não deve gerar ALTER."""
-        from news_radar.core.db import _ensure_datetime_columns
+        from o_rugido.core.db import _ensure_datetime_columns
 
         executed_alters = []
 
@@ -127,7 +127,7 @@ class TestEnsureDatetimeColumns:
 class TestChromiumExecutable:
     def test_retorna_none_quando_nada_disponivel(self, monkeypatch):
         """Sem env vars e sem Chromium no PATH → None (usa bundled do Playwright)."""
-        from news_radar.services import rendering as card_renderer
+        from o_rugido.services import rendering as card_renderer
         monkeypatch.delenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", raising=False)
         monkeypatch.delenv("CHROMIUM_PATH", raising=False)
         monkeypatch.setattr("shutil.which", lambda name: None)
@@ -136,7 +136,7 @@ class TestChromiumExecutable:
         assert result is None
 
     def test_retorna_env_playwright_chromium_executable_path(self, monkeypatch, tmp_path):
-        from news_radar.services import rendering as card_renderer
+        from o_rugido.services import rendering as card_renderer
         fake_exec = tmp_path / "chromium"
         fake_exec.write_text("fake")
         monkeypatch.setenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", str(fake_exec))
@@ -145,7 +145,7 @@ class TestChromiumExecutable:
         assert result == str(fake_exec)
 
     def test_retorna_env_chromium_path(self, monkeypatch, tmp_path):
-        from news_radar.services import rendering as card_renderer
+        from o_rugido.services import rendering as card_renderer
         fake_exec = tmp_path / "chromium"
         fake_exec.write_text("fake")
         monkeypatch.delenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", raising=False)
@@ -155,7 +155,7 @@ class TestChromiumExecutable:
         assert result == str(fake_exec)
 
     def test_ignora_env_que_nao_existe_como_arquivo(self, monkeypatch):
-        from news_radar.services import rendering as card_renderer
+        from o_rugido.services import rendering as card_renderer
         monkeypatch.setenv("CHROMIUM_PATH", "/nao/existe/chromium")
         monkeypatch.delenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", raising=False)
         monkeypatch.setattr("shutil.which", lambda name: None)
@@ -168,7 +168,7 @@ class TestChromiumExecutable:
 
 class TestTTLCache:
     def test_funcao_retorna_resultado_do_cache(self):
-        from news_radar.core.cache import ttl_cache as _ttl_cache
+        from o_rugido.core.cache import ttl_cache as _ttl_cache
 
         call_count = {"n": 0}
 
@@ -182,7 +182,7 @@ class TestTTLCache:
         assert call_count["n"] == 1, "Função chamada mais vezes do que o esperado"
 
     def test_cache_expira_apos_ttl(self):
-        from news_radar.core.cache import ttl_cache as _ttl_cache
+        from o_rugido.core.cache import ttl_cache as _ttl_cache
 
         call_count = {"n": 0}
 
@@ -197,7 +197,7 @@ class TestTTLCache:
         assert call_count["n"] == 2, "Cache com TTL=0 deve re-executar"
 
     def test_diferentes_argumentos_tem_entradas_separadas(self):
-        from news_radar.core.cache import ttl_cache as _ttl_cache
+        from o_rugido.core.cache import ttl_cache as _ttl_cache
 
         results = []
 
@@ -212,7 +212,7 @@ class TestTTLCache:
         assert results == [1, 2]
 
     def test_cache_clear_limpa_entradas(self):
-        from news_radar.core.cache import ttl_cache as _ttl_cache
+        from o_rugido.core.cache import ttl_cache as _ttl_cache
 
         call_count = {"n": 0}
 
@@ -234,7 +234,7 @@ class TestBackupCommand:
         import argparse
         import shutil
 
-        from news_radar.cli import cmd_backup
+        from o_rugido.cli import cmd_backup
 
         monkeypatch.setattr(shutil, "which", lambda name: None)
 
@@ -252,7 +252,7 @@ class TestBackupCommand:
         import shutil
         import subprocess
 
-        from news_radar.cli import cmd_backup
+        from o_rugido.cli import cmd_backup
 
         # Simula pg_dump disponível e funcionando
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pg_dump" if name == "pg_dump" else None)
@@ -277,20 +277,20 @@ class TestBackupCommand:
 
 class TestCLIParser:
     def test_backup_command_existe_no_parser(self):
-        from news_radar.cli import build_parser
+        from o_rugido.cli import build_parser
         parser = build_parser()
         # Verificar se o subparser 'backup' existe tentando fazer parse
         args = parser.parse_args(["backup"])
         assert hasattr(args, "func")
 
     def test_backup_aceita_argumento_output(self):
-        from news_radar.cli import build_parser
+        from o_rugido.cli import build_parser
         parser = build_parser()
         args = parser.parse_args(["backup", "--output", "meu_backup.sql"])
         assert args.output == "meu_backup.sql"
 
     def test_backup_output_opcional(self):
-        from news_radar.cli import build_parser
+        from o_rugido.cli import build_parser
         parser = build_parser()
         args = parser.parse_args(["backup"])
         assert args.output is None

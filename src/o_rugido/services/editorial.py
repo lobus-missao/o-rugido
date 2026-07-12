@@ -16,13 +16,13 @@ from pathlib import Path
 
 import requests
 
-from news_radar.core.config import (
-    NEWS_RADAR_PUBLIC_URL,
+from o_rugido.core.config import (
+    O_RUGIDO_PUBLIC_URL,
     TELEGRAM_BOT_TOKEN,
     TELEGRAM_CHAT_ID,
 )
-from news_radar.core.db import connect, utc_now
-from news_radar.core.text_utils import normalize_text, strip_source_suffix
+from o_rugido.core.db import connect, utc_now
+from o_rugido.core.text_utils import normalize_text, strip_source_suffix
 
 _GNEWS_GENERIC_PREFIXES = (
     "Comprehensive up-to-date news coverage",
@@ -101,7 +101,7 @@ def _fetch_article_summary(url: str, timeout: int = 10) -> tuple[str, str]:
         resp = requests.get(
             resolved,
             timeout=timeout,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; news-radar/1.0)"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; o-rugido/1.0)"},
             allow_redirects=True,
         )
         resp.raise_for_status()
@@ -182,7 +182,7 @@ API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 def _is_dry_run(dry_run: bool | None = None) -> bool:
     if dry_run is not None:
         return dry_run
-    return os.getenv("NEWS_RADAR_DRY_RUN", "").lower() in {"1", "true", "yes", "on"}
+    return os.getenv("O_RUGIDO_DRY_RUN", "").lower() in {"1", "true", "yes", "on"}
 
 
 def _tg(method: str, **kwargs) -> dict:
@@ -206,7 +206,7 @@ def _try_record_editorial_action(
 ) -> None:
     """Registra ação editorial (best-effort). Não quebra o fluxo se a tabela não existir."""
     try:
-        from news_radar.repositories.editorial_actions import record_editorial_action
+        from o_rugido.repositories.editorial_actions import record_editorial_action
         record_editorial_action(
             action=action,
             actor=actor,
@@ -279,10 +279,10 @@ def ensure_edit_token(dispatch_id: int, ttl_hours: int = _EDIT_TOKEN_TTL_HOURS) 
 
 def edit_url_for(dispatch_id: int) -> str | None:
     """URL pública /edit?token=... usada nos botões do Telegram."""
-    if not NEWS_RADAR_PUBLIC_URL:
+    if not O_RUGIDO_PUBLIC_URL:
         return None
     token = ensure_edit_token(dispatch_id)
-    return f"{NEWS_RADAR_PUBLIC_URL}/edit?token={token}"
+    return f"{O_RUGIDO_PUBLIC_URL}/edit?token={token}"
 
 
 def get_dispatch_by_token(token: str) -> dict | None:
@@ -361,7 +361,7 @@ def apply_edit_and_refresh(
     user: str = "Editor",
 ) -> dict:
     """Aplica edits e, se o card já existe no Telegram, re-renderiza e troca a foto."""
-    from news_radar.services.rendering import render_single_card
+    from o_rugido.services.rendering import render_single_card
 
     result = apply_edit(
         dispatch_id, title=title, summary=summary, image_url=image_url, user=user
@@ -657,9 +657,9 @@ def create_dispatch(
 
     # Envia cabeçalho da edição
     edition_label = edition_info["label"]
-    previous_dry_run = os.getenv("NEWS_RADAR_DRY_RUN")
+    previous_dry_run = os.getenv("O_RUGIDO_DRY_RUN")
     if dry_run is not None:
-        os.environ["NEWS_RADAR_DRY_RUN"] = "1" if dry_run else "0"
+        os.environ["O_RUGIDO_DRY_RUN"] = "1" if dry_run else "0"
     try:
         _tg("sendMessage", json={
             "chat_id": TELEGRAM_CHAT_ID,
@@ -676,15 +676,15 @@ def create_dispatch(
     finally:
         if dry_run is not None:
             if previous_dry_run is None:
-                os.environ.pop("NEWS_RADAR_DRY_RUN", None)
+                os.environ.pop("O_RUGIDO_DRY_RUN", None)
             else:
-                os.environ["NEWS_RADAR_DRY_RUN"] = previous_dry_run
+                os.environ["O_RUGIDO_DRY_RUN"] = previous_dry_run
 
     return created
 
 
 def _send_article_for_approval(dispatch_id: int, art: dict, rank: int, edition_label: str) -> None:
-    from news_radar.services.rendering import render_single_card
+    from o_rugido.services.rendering import render_single_card
 
     # Gera o card (foto + design) upfront pra editor já ver como vai ficar
     r = render_single_card(art["id"])
@@ -809,7 +809,7 @@ def generate_card_for_dispatch(
     *,
     dry_run: bool | None = None,
 ) -> dict:
-    from news_radar.services.rendering import render_single_card
+    from o_rugido.services.rendering import render_single_card
 
     dispatch = get_dispatch(dispatch_id)
     if not dispatch:

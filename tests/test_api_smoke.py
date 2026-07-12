@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import api_server
-from news_radar.api import app as http_app
+from o_rugido.api import app as http_app
 
 
 def test_health_endpoint():

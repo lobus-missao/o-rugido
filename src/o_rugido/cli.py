@@ -126,7 +126,7 @@ def cmd_backup(args) -> None:
         print(json.dumps({
             "ok": False,
             "error": "pg_dump não encontrado. Instale postgresql-client ou use Docker.",
-            "manual": f"docker exec <container_postgres> pg_dump -U <user> news_radar > {output}",
+            "manual": f"docker exec <container_postgres> pg_dump -U <user> o_rugido > {output}",
         }, ensure_ascii=False))
         return
 
@@ -155,7 +155,7 @@ def cmd_stats(args) -> None:
 # ── Parser ───────────────────────────────────────────────────────────────────
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="news-radar", description="News Radar — CLI")
+    parser = argparse.ArgumentParser(prog="o-rugido", description="Portal O Rugido — CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("init-db", help="Aplica migrations pendentes.").set_defaults(func=cmd_init_db)

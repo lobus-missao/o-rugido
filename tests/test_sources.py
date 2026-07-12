@@ -14,8 +14,8 @@ from contextlib import contextmanager
 
 import pytest
 
-import news_radar.repositories.sources as src_module
-from news_radar.repositories import editorial_actions as ed_module
+import o_rugido.repositories.sources as src_module
+from o_rugido.repositories import editorial_actions as ed_module
 
 # ---------------------------------------------------------------------------
 # Helpers de mock (mesmo padrão de test_dispatch_idempotency.py)
@@ -399,14 +399,14 @@ def test_sources_e_editorial_smoke_postgres(monkeypatch):
     if not test_url:
         pytest.skip("Defina TEST_DATABASE_URL para rodar smoke de banco real.")
 
-    import news_radar.core.db as db
+    import o_rugido.core.db as db
     monkeypatch.setattr(db, "DATABASE_URL", test_url)
 
     # Repatchar connect nos módulos carregados para usar a URL de teste
     import importlib
 
-    import news_radar.repositories.sources as src_real
-    import news_radar.services.editorial as ed_real
+    import o_rugido.repositories.sources as src_real
+    import o_rugido.services.editorial as ed_real
     importlib.reload(src_real)
     importlib.reload(ed_real)
     monkeypatch.setattr(src_real, "connect", db.connect)

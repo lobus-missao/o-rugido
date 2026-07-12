@@ -1,8 +1,8 @@
 services:
 
-  app:
+  o-rugido-app:
     build: .
-    container_name: news-radar-app
+    container_name: o-rugido-app
     command: >
       gunicorn -w 4 -b 0.0.0.0:8888
       --access-logfile -
@@ -14,7 +14,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
-      NEWS_RADAR_PUBLIC_URL: ${NEWS_RADAR_PUBLIC_URL:-}
+      O_RUGIDO_PUBLIC_URL: ${O_RUGIDO_PUBLIC_URL:-}
       SEARXNG_URL: http://searxng:8080
     volumes:
       - ./data:/app/data
@@ -34,7 +34,7 @@ services:
 
   dashboard:
     build: .
-    container_name: news-radar-dashboard
+    container_name: o-rugido-dashboard
     command: >
       streamlit run dashboard/app.py
       --server.port 8501
@@ -63,10 +63,10 @@ services:
 
   searxng:
     image: searxng/searxng:latest
-    container_name: news-radar-searxng
+    container_name: o-rugido-searxng
     environment:
       SEARXNG_BASE_URL: http://searxng:8080/
-      INSTANCE_NAME: news-radar
+      INSTANCE_NAME: o-rugido
     volumes:
       - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
     restart: unless-stopped

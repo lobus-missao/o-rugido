@@ -2,8 +2,8 @@ from pathlib import Path
 
 from flask import Blueprint, abort, jsonify, request, send_from_directory
 
-from news_radar.core.config import CARDS_DIR
-from news_radar.services.rendering import render_single_card
+from o_rugido.core.config import CARDS_DIR
+from o_rugido.services.rendering import render_single_card
 
 bp = Blueprint("render", __name__)
 

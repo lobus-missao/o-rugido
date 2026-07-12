@@ -6,7 +6,7 @@ from typing import Any
 
 from dateutil import parser as date_parser
 
-from news_radar.core.text_utils import count_terms, extract_money_values
+from o_rugido.core.text_utils import count_terms, extract_money_values
 
 PUBLIC_ORG_TERMS = [
     "governo", "prefeitura", "câmara", "camara", "assembleia", "ministério", "ministerio",
@@ -344,7 +344,7 @@ def classify_priority(score: float) -> str:
 def auto_classify() -> int:
     import psycopg2.extras
 
-    from news_radar.core.db import connect
+    from o_rugido.core.db import connect
 
     with connect() as conn, conn.cursor() as cur:
         # FOR UPDATE SKIP LOCKED: evita dois rankers calculando o mesmo artigo.
@@ -386,7 +386,7 @@ def rank_all() -> int:
     """
     import psycopg2.extras
 
-    from news_radar.core.db import connect, init_db, json_dumps
+    from o_rugido.core.db import connect, init_db, json_dumps
 
     init_db()
 

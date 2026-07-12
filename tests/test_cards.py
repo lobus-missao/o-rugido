@@ -16,7 +16,7 @@ TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from news_radar.services.rendering import (
+from o_rugido.services.rendering import (
     _render_html,
     build_card_context,
     list_templates,
@@ -217,7 +217,7 @@ class TestRenderCardHtml:
 
 class TestSaveCardHtml:
     def test_salva_arquivo_html(self, tmp_path, monkeypatch):
-        import news_radar.services.rendering as cr
+        import o_rugido.services.rendering as cr
 
         monkeypatch.setattr(cr, "CARDS_DIR", tmp_path)
 
@@ -229,7 +229,7 @@ class TestSaveCardHtml:
         assert path.read_text(encoding="utf-8") == html_content
 
     def test_nome_do_arquivo_usa_16_chars_do_id(self, tmp_path, monkeypatch):
-        import news_radar.services.rendering as cr
+        import o_rugido.services.rendering as cr
 
         monkeypatch.setattr(cr, "CARDS_DIR", tmp_path)
         art_id = "abcdef1234567890xyz"
@@ -237,7 +237,7 @@ class TestSaveCardHtml:
         assert path.name == f"card_{art_id[:16]}.html"
 
     def test_sobrescreve_arquivo_existente(self, tmp_path, monkeypatch):
-        import news_radar.services.rendering as cr
+        import o_rugido.services.rendering as cr
 
         monkeypatch.setattr(cr, "CARDS_DIR", tmp_path)
         art_id = "overwrite12345678"

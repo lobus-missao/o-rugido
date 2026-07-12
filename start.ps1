@@ -1,4 +1,4 @@
-# News Radar RSS — Startup local (desenvolvimento)
+# Portal O Rugido — Startup local (desenvolvimento)
 # Em producao use: docker compose up -d
 # Uso: .\start.ps1
 
@@ -6,11 +6,11 @@ $ROOT = $PSScriptRoot
 $VENV = "$ROOT\.venv\Scripts"
 $PYTHON = "$VENV\python.exe"
 
-Write-Host "=== News Radar RSS — Startup (dev local) ===" -ForegroundColor Cyan
+Write-Host "=== Portal O Rugido — Startup (dev local) ===" -ForegroundColor Cyan
 
 # 1. PostgreSQL via Docker
 Write-Host "[1/5] PostgreSQL..." -ForegroundColor Yellow
-$pgRunning = docker ps --filter "name=news_radar_rss-postgres-1" --filter "status=running" -q 2>$null
+$pgRunning = docker ps --filter "name=o-rugido-postgres-1" --filter "status=running" -q 2>$null
 if (-not $pgRunning) {
     docker compose -f "$ROOT\docker-compose.yml" up -d postgres
     Start-Sleep 3
@@ -45,8 +45,8 @@ if (-not $dashRunning) {
 Write-Host "[4/5] n8n (porta 5678)..." -ForegroundColor Yellow
 $n8nRunning = try { (Invoke-WebRequest "http://localhost:5678" -TimeoutSec 2 -UseBasicParsing).StatusCode -eq 200 } catch { $false }
 if (-not $n8nRunning) {
-    $env:NEWS_RADAR_API_URL = "http://localhost:8888"
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", '$env:NEWS_RADAR_API_URL="http://localhost:8888"; npx n8n' -WindowStyle Minimized
+    $env:O_RUGIDO_API_URL = "http://localhost:8888"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", '$env:O_RUGIDO_API_URL="http://localhost:8888"; npx n8n' -WindowStyle Minimized
     Write-Host "      iniciando (~20s)..." -ForegroundColor Green
 } else {
     Write-Host "      ja rodando" -ForegroundColor Green

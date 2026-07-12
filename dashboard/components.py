@@ -41,7 +41,7 @@ EDITORIAL_LABELS = {
 
 
 PYTHON = sys.executable
-CLI = [PYTHON, "-m", "news_radar.cli"]
+CLI = [PYTHON, "-m", "o_rugido.cli"]
 
 
 def run_cli(*args, timeout: int = 120) -> dict:
@@ -83,7 +83,7 @@ def priority_pill(priority: str) -> str:
 
 
 def article_card(art: dict, show_actions: bool = True, key_prefix: str = "") -> None:
-    from news_radar.repositories.dashboard_queries import update_editorial_status
+    from o_rugido.repositories.dashboard_queries import update_editorial_status
 
     priority = art.get("priority") or ""
     score = float(art.get("final_score_piaui") or 0)

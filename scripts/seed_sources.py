@@ -19,9 +19,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from news_radar.services.feeds import load_feeds_config
-from news_radar.core.db import init_db
-from news_radar.repositories.sources import upsert_source
+from o_rugido.services.feeds import load_feeds_config
+from o_rugido.core.db import init_db
+from o_rugido.repositories.sources import upsert_source
 
 
 def seed_sources(dry_run: bool = False) -> dict:

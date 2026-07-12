@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-from news_radar.core.db import connect
+from o_rugido.core.db import connect
 
 Scope = Literal["piaui"]
 
@@ -96,7 +96,7 @@ def update_card_status(
     card_path: str | None = None,
     html_path: str | None = None,
 ) -> None:
-    from news_radar.core.db import utc_now
+    from o_rugido.core.db import utc_now
     with connect() as conn, conn.cursor() as cur:
         cur.execute(
             """

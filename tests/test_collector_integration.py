@@ -15,8 +15,8 @@ from __future__ import annotations
 from contextlib import contextmanager
 from unittest.mock import patch
 
-import news_radar.services.editorial as dispatch_module
-import news_radar.services.ingestion as collector_module
+import o_rugido.services.editorial as dispatch_module
+import o_rugido.services.ingestion as collector_module
 
 # ===========================================================================
 # Helpers de mock (mesmo padrão das fases anteriores)
@@ -75,15 +75,15 @@ def test_try_update_source_status_chama_mark_success_quando_status_ok(monkeypatc
     called_error = []
 
     monkeypatch.setattr(
-        "news_radar.repositories.sources.get_source_by_name",
+        "o_rugido.repositories.sources.get_source_by_name",
         lambda name: src_row,
     )
     monkeypatch.setattr(
-        "news_radar.repositories.sources.mark_source_success",
+        "o_rugido.repositories.sources.mark_source_success",
         lambda sid, collected_count=0: called_success.append(sid),
     )
     monkeypatch.setattr(
-        "news_radar.repositories.sources.mark_source_error",
+        "o_rugido.repositories.sources.mark_source_error",
         lambda sid, error_msg="": called_error.append(sid),
     )
 
@@ -99,10 +99,10 @@ def test_try_update_source_status_chama_mark_error_quando_status_error(monkeypat
 
     called_error = []
 
-    monkeypatch.setattr("news_radar.repositories.sources.get_source_by_name", lambda name: src_row)
-    monkeypatch.setattr("news_radar.repositories.sources.mark_source_success", lambda sid, **kw: None)
+    monkeypatch.setattr("o_rugido.repositories.sources.get_source_by_name", lambda name: src_row)
+    monkeypatch.setattr("o_rugido.repositories.sources.mark_source_success", lambda sid, **kw: None)
     monkeypatch.setattr(
-        "news_radar.repositories.sources.mark_source_error",
+        "o_rugido.repositories.sources.mark_source_error",
         lambda sid, error_msg="": called_error.append((sid, error_msg)),
     )
 
@@ -116,13 +116,13 @@ def test_try_update_source_status_ignora_fonte_nao_cadastrada(monkeypatch):
     called_success = []
     called_error = []
 
-    monkeypatch.setattr("news_radar.repositories.sources.get_source_by_name", lambda name: None)
+    monkeypatch.setattr("o_rugido.repositories.sources.get_source_by_name", lambda name: None)
     monkeypatch.setattr(
-        "news_radar.repositories.sources.mark_source_success",
+        "o_rugido.repositories.sources.mark_source_success",
         lambda sid, **kw: called_success.append(sid),
     )
     monkeypatch.setattr(
-        "news_radar.repositories.sources.mark_source_error",
+        "o_rugido.repositories.sources.mark_source_error",
         lambda sid, **kw: called_error.append(sid),
     )
 
@@ -137,12 +137,12 @@ def test_try_update_source_status_warning_trata_como_sucesso(monkeypatch):
     src_row = {"id": 9, "name": "Veja"}
     called_success = []
 
-    monkeypatch.setattr("news_radar.repositories.sources.get_source_by_name", lambda name: src_row)
+    monkeypatch.setattr("o_rugido.repositories.sources.get_source_by_name", lambda name: src_row)
     monkeypatch.setattr(
-        "news_radar.repositories.sources.mark_source_success",
+        "o_rugido.repositories.sources.mark_source_success",
         lambda sid, collected_count=0: called_success.append(sid),
     )
-    monkeypatch.setattr("news_radar.repositories.sources.mark_source_error", lambda sid, **kw: None)
+    monkeypatch.setattr("o_rugido.repositories.sources.mark_source_error", lambda sid, **kw: None)
 
     collector_module._try_update_source_status("Veja", "warning", 5, "bozo")
 
@@ -152,7 +152,7 @@ def test_try_update_source_status_warning_trata_como_sucesso(monkeypatch):
 def test_try_update_source_status_nao_propaga_excecao(monkeypatch):
     """_try_update_source_status absorve exceções sem quebrar a coleta."""
     monkeypatch.setattr(
-        "news_radar.repositories.sources.get_source_by_name",
+        "o_rugido.repositories.sources.get_source_by_name",
         lambda name: (_ for _ in ()).throw(RuntimeError("DB offline")),
     )
 
@@ -169,12 +169,12 @@ def test_try_record_editorial_action_chama_record(monkeypatch):
     chamadas = []
 
     monkeypatch.setattr(
-        "news_radar.repositories.editorial_actions.record_editorial_action",
+        "o_rugido.repositories.editorial_actions.record_editorial_action",
         lambda action, actor, **kw: chamadas.append((action, actor, kw)),
     )
 
     # Precisa recarregar o import lazy dentro do helper
-    with patch("news_radar.repositories.editorial_actions.record_editorial_action") as mock_rec:
+    with patch("o_rugido.repositories.editorial_actions.record_editorial_action") as mock_rec:
         mock_rec.return_value = 1
         dispatch_module._try_record_editorial_action(
             action="approve_article",
@@ -197,7 +197,7 @@ def test_try_record_editorial_action_chama_record(monkeypatch):
 
 def test_try_record_editorial_action_nao_propaga_excecao(monkeypatch):
     """_try_record_editorial_action absorve exceção sem quebrar o dispatch."""
-    with patch("news_radar.repositories.editorial_actions.record_editorial_action") as mock_rec:
+    with patch("o_rugido.repositories.editorial_actions.record_editorial_action") as mock_rec:
         mock_rec.side_effect = RuntimeError("editorial_actions indisponível")
 
         # Não deve lançar exceção

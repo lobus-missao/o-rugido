@@ -16,7 +16,7 @@ CARDS_DIR = DATA_DIR / "cards"
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://news:senha@localhost:5432/news_radar",
+    "postgresql://news:senha@localhost:5432/o_rugido",
 )
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -27,7 +27,7 @@ N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "")
 SEARXNG_URL = os.getenv("SEARXNG_URL", "http://searxng:8080").rstrip("/")
 
 # URL pública da API — usada nos botões "Editar" do Telegram
-NEWS_RADAR_PUBLIC_URL = os.getenv("NEWS_RADAR_PUBLIC_URL", "").rstrip("/")
+O_RUGIDO_PUBLIC_URL = os.getenv("O_RUGIDO_PUBLIC_URL", "").rstrip("/")
 
 
 def ensure_dirs() -> None:

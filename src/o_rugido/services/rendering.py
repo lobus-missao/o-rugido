@@ -10,8 +10,8 @@ from urllib.parse import urlparse
 
 import requests
 
-from news_radar.core.config import CARDS_DIR, TEMPLATES_DIR, ensure_dirs
-from news_radar.core.text_utils import strip_source_suffix
+from o_rugido.core.config import CARDS_DIR, TEMPLATES_DIR, ensure_dirs
+from o_rugido.core.text_utils import strip_source_suffix
 
 from ..repositories.articles import articles_pending_card, update_card_status
 
@@ -261,7 +261,7 @@ def download_post_image(image_url: str, article_id: str) -> Path | None:
         resp = requests.get(
             image_url,
             timeout=15,
-            headers={"User-Agent": "news-radar/1.0"},
+            headers={"User-Agent": "o-rugido/1.0"},
             allow_redirects=True,
         )
         resp.raise_for_status()
@@ -291,7 +291,7 @@ def render_cards(
     ensure_dirs()
 
     if article_ids:
-        from news_radar.core.db import connect
+        from o_rugido.core.db import connect
 
         with connect() as conn, conn.cursor() as cur:
             ph = ",".join(["%s"] * len(article_ids))
@@ -334,7 +334,7 @@ def render_single_card(
     summary_override: str | None = None,  # não afeta a imagem (vai pro caption)
 ) -> dict[str, Any]:
     """Gera o card visual (PNG) com foto de fundo + banner de manchete."""
-    from news_radar.core.db import connect
+    from o_rugido.core.db import connect
 
     ensure_dirs()
     template_path = TEMPLATES_DIR / template_name
@@ -363,7 +363,7 @@ def render_single_card(
         if image_url:
             candidates.append(image_url)
         else:
-            from news_radar.services.image_search import search_images
+            from o_rugido.services.image_search import search_images
             candidates.extend(
                 item["url"] for item in search_images(article["title"], limit=8)
                 if item.get("url")

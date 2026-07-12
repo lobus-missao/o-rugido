@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from news_radar.services.ranker import (
+from o_rugido.services.ranker import (
     PIAUI_TERMS,
     PUBLIC_ORG_TERMS,
     TERESINA_TERMS,

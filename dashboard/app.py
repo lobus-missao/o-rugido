@@ -3,9 +3,9 @@ from __future__ import annotations
 import streamlit as st
 from components import article_card, run_cli, sidebar_controls
 
-from news_radar.repositories.articles import top_articles
+from o_rugido.repositories.articles import top_articles
 
-st.set_page_config(page_title="News Radar", layout="wide")
+st.set_page_config(page_title="Portal O Rugido", layout="wide")
 
 sidebar_controls()
 
@@ -20,7 +20,7 @@ with st.sidebar:
         help="Quantos artigos mostrar na lista, ordenados por score.",
     )
 
-st.title("News Radar")
+st.title("Portal O Rugido")
 st.caption("Pipeline editorial Piaui")
 
 col_a, col_b, _ = st.columns([1, 1, 4])

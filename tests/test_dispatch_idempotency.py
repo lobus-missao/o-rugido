@@ -13,7 +13,7 @@ from contextlib import contextmanager
 
 import pytest
 
-from news_radar.services import editorial as dispatch
+from o_rugido.services import editorial as dispatch
 
 # ---------------------------------------------------------------------------
 # Helpers de mock
@@ -138,7 +138,7 @@ def test_guard_logs_warning_when_blocked(monkeypatch, caplog):
     monkeypatch.setattr(dispatch, "connect", _mock_connect(cnt=1))
     monkeypatch.setattr(dispatch, "select_top_articles", lambda *a, **kw: [])
 
-    with caplog.at_level(logging.WARNING, logger="news_radar.services.editorial"):
+    with caplog.at_level(logging.WARNING, logger="o_rugido.services.editorial"):
         result = dispatch.create_dispatch("default", scope="piaui", top=3, dry_run=True)
 
     assert result == []

@@ -1,7 +1,7 @@
 """Seleção de top-N com diversidade — evita 3 matérias da mesma história/editoria."""
 from __future__ import annotations
 
-from news_radar.services.editorial import _select_with_diversity
+from o_rugido.services.editorial import _select_with_diversity
 
 
 def _art(art_id: str, sig: str, cat: str, score: float) -> dict:

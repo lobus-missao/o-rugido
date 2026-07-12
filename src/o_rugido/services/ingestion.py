@@ -8,9 +8,9 @@ from typing import Any
 import feedparser
 from dateutil import parser as date_parser
 
-from news_radar.adapters.n8n_webhook import notify_ingestion_complete
-from news_radar.core.db import connect, init_db, json_dumps, utc_now
-from news_radar.core.text_utils import (
+from o_rugido.adapters.n8n_webhook import notify_ingestion_complete
+from o_rugido.core.db import connect, init_db, json_dumps, utc_now
+from o_rugido.core.text_utils import (
     article_id,
     canonicalize_url,
     strip_html,
@@ -192,7 +192,7 @@ def _try_update_source_status(
     Não quebra a coleta se a tabela não existir ou a fonte não estiver cadastrada.
     """
     try:
-        from news_radar.repositories.sources import (
+        from o_rugido.repositories.sources import (
             get_source_by_name,
             mark_source_error,
             mark_source_success,

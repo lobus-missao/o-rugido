@@ -12,7 +12,7 @@ Uso: preencher priority/category para artigos que ainda não passaram pela IA.
 """
 from __future__ import annotations
 
-from news_radar.core.text_utils import count_terms
+from o_rugido.core.text_utils import count_terms
 
 # ── Listas de termos por dimensão ────────────────────────────────────────────
 

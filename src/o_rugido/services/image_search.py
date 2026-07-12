@@ -9,7 +9,7 @@ from typing import Any
 
 import requests
 
-from news_radar.core.config import SEARXNG_URL
+from o_rugido.core.config import SEARXNG_URL
 
 _logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def search_images(
             f"{SEARXNG_URL}/search",
             params=params,
             timeout=timeout,
-            headers={"User-Agent": "news-radar/1.0"},
+            headers={"User-Agent": "o-rugido/1.0"},
         )
         resp.raise_for_status()
         data = resp.json()

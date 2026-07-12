@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
-from news_radar.services.image_search import search_images
+from o_rugido.services.image_search import search_images
 
 bp = Blueprint("images", __name__)
 

@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "news-radar-rss"
+name = "o-rugido"
 version = "0.1.0"
-description = "Pipeline editorial Piauí — RSS, ranking, aprovação humana e publicação em Telegram/Instagram."
+description = "Portal O Rugido — pipeline editorial Piauí (RSS, ranking, aprovação humana, publicação em Telegram/Instagram)."
 requires-python = ">=3.10"
 dependencies = [
     "feedparser==6.0.11",
@@ -33,7 +33,7 @@ dev = [
 ]
 
 [project.scripts]
-news-radar = "news_radar.cli:main"
+o-rugido = "o_rugido.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -64,7 +64,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["news_radar"]
+known-first-party = ["o_rugido"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E402"]

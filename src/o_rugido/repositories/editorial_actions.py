@@ -4,7 +4,7 @@ Fase 2 — tabela editorial_actions: quem fez o quê, quando e em qual artigo/di
 """
 from __future__ import annotations
 
-from news_radar.core.db import connect, json_dumps
+from o_rugido.core.db import connect, json_dumps
 
 
 def record_editorial_action(

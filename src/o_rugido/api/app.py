@@ -8,7 +8,7 @@ from pathlib import Path
 from flask import Flask, jsonify
 
 ROOT = Path(__file__).resolve().parents[3]
-CLI = [sys.executable, "-m", "news_radar.cli"]
+CLI = [sys.executable, "-m", "o_rugido.cli"]
 WEB_TEMPLATES_DIR = ROOT / "templates" / "web"
 
 

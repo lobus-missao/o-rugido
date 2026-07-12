@@ -1,10 +1,10 @@
 use_default_settings: true
 
 general:
-  instance_name: "News Radar - Busca de imagens"
+  instance_name: "Portal O Rugido - Busca de imagens"
 
 server:
-  secret_key: "newsradar-local-change-in-prod"
+  secret_key: "orugido-local-change-in-prod"
   limiter: false
   image_proxy: false
   method: "GET"
