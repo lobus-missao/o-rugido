@@ -106,6 +106,7 @@ services:
     depends_on:
       - o-rugido-app
     restart: unless-stopped
+    profiles: [dev]
 
   cloudflared-n8n:
     image: cloudflare/cloudflared:latest
@@ -113,6 +114,7 @@ services:
     depends_on:
       - n8n
     restart: unless-stopped
+    profiles: [dev]
 
 volumes:
   pgdata:
