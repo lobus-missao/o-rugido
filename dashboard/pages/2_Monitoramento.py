@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import timedelta
 
 import streamlit as st
-
 from components import EDITORIAL_LABELS
 
 from o_rugido.core.config import TELEGRAM_BOT_TOKEN
@@ -122,7 +121,7 @@ st.divider()
 st.subheader("Serviços internos")
 svcs = data["services"]
 cols = st.columns(len(svcs))
-for (name, info), col in zip(svcs.items(), cols):
+for (name, info), col in zip(svcs.items(), cols, strict=False):
     with col:
         ok = info.get("ok")
         if ok is None:
