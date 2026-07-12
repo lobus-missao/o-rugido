@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Literal
 
 from o_rugido.core.db import connect
@@ -19,6 +19,9 @@ def top_articles(
     days_back: int | None = None,
     search: str | None = None,
     priority: list[str] | None = None,
+    min_score: float | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> list[dict]:
     column = SCORE_COLUMN[scope]
     conditions = []
@@ -27,10 +30,24 @@ def top_articles(
     if only_with_score:
         conditions.append(f"{column} > 0")
 
+    if min_score is not None:
+        conditions.append(f"{column} >= %s")
+        params.append(min_score)
+
     if days_back is not None:
         cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
         conditions.append("(published_at >= %s OR published_at IS NULL)")
         params.append(cutoff)
+
+    if date_from is not None:
+        start = datetime.combine(date_from, time.min, tzinfo=timezone.utc)
+        conditions.append("published_at >= %s")
+        params.append(start)
+
+    if date_to is not None:
+        end = datetime.combine(date_to, time.max, tzinfo=timezone.utc)
+        conditions.append("published_at <= %s")
+        params.append(end)
 
     if search:
         conditions.append("(title ILIKE %s OR summary ILIKE %s)")

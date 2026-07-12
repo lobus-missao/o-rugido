@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import streamlit as st
 from components import article_card, run_cli, sidebar_controls
 
@@ -23,9 +25,9 @@ with st.sidebar:
 st.title("Portal O Rugido")
 st.caption("Pipeline editorial Piaui")
 
-col_a, col_b, _ = st.columns([1, 1, 4])
-with col_a:
-    if st.button("Coletar agora", use_container_width=True):
+action_col1, action_col2 = st.columns(2)
+with action_col1:
+    if st.button("Coletar", use_container_width=True):
         result = run_cli("collect", "--limit-per-feed", "30", timeout=180)
         if result["ok"]:
             st.success(
@@ -34,9 +36,8 @@ with col_a:
             )
         else:
             st.error(result.get("error", "falhou"))
-
-with col_b:
-    if st.button("Recalcular scores", use_container_width=True):
+with action_col2:
+    if st.button("Recalcular", use_container_width=True):
         result = run_cli("rank", timeout=120)
         if result["ok"]:
             st.success(result.get("output", "OK"))
@@ -45,10 +46,39 @@ with col_b:
 
 st.divider()
 
-articles = top_articles(scope="piaui", limit=int(limit))
+filt_col1, filt_col2 = st.columns(2)
+with filt_col1:
+    date_range = st.date_input(
+        "Periodo",
+        value=(date.today(), date.today()),
+        format="DD/MM/YYYY",
+        help="Filtra por data de publicacao. Padrao: hoje.",
+    )
+with filt_col2:
+    min_score = st.slider(
+        "Score minimo",
+        min_value=0, max_value=100, value=0, step=5,
+        help="Mostra apenas artigos com score final acima desse valor.",
+    )
+
+if isinstance(date_range, tuple) and len(date_range) == 2:
+    d_from, d_to = date_range
+else:
+    d_from = d_to = date_range if isinstance(date_range, date) else date.today()
+
+articles = top_articles(
+    scope="piaui",
+    limit=int(limit),
+    min_score=float(min_score) if min_score > 0 else None,
+    date_from=d_from,
+    date_to=d_to,
+)
 
 if not articles:
-    st.info("Nenhum artigo. Rode `collect` + `rank`.")
+    st.info(
+        "Nenhum artigo no periodo/score selecionado. "
+        "Amplia o intervalo, reduz o score minimo ou roda `collect` + `rank`."
+    )
 else:
     st.subheader(f"{len(articles)} artigos")
     for art in articles:

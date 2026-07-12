@@ -118,9 +118,15 @@ def article_card(art: dict, show_actions: bool = True, key_prefix: str = "") -> 
                 unsafe_allow_html=True,
             )
 
+        reasons = art.get("score_reasons_json") or []
+        if reasons:
+            with st.expander(f"Ver como o score {score:.0f} foi calculado"):
+                for r in reasons:
+                    st.markdown(f"- {r}")
+
         if show_actions:
             st.write("")
-            c1, c2, c3, _ = st.columns([1, 1, 1, 3])
+            c1, c2, c3 = st.columns(3)
             with c1:
                 if st.button("Selecionar", key=f"sel_{key}", use_container_width=True):
                     update_editorial_status(art_id, "selected")
