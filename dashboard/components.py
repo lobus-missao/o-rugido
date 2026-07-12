@@ -21,11 +21,11 @@ PRIORITY_COLOR = {
 }
 
 PRIORITY_LABEL = {
-    "critica": "Critica",
+    "critica": "Crítica",
     "alta":    "Alta",
-    "media":   "Media",
+    "media":   "Média",
     "baixa":   "Baixa",
-    "ruido":   "Ruido",
+    "ruido":   "Ruído",
 }
 
 EDITORIAL_LABELS = {
@@ -141,8 +141,3 @@ def article_card(art: dict, show_actions: bool = True, key_prefix: str = "") -> 
                     st.rerun()
 
 
-def sidebar_controls() -> None:
-    with st.sidebar:
-        st.markdown("### Controles")
-        if st.button("Atualizar", use_container_width=True):
-            st.rerun()

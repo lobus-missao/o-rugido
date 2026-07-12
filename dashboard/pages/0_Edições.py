@@ -3,9 +3,12 @@ from __future__ import annotations
 from datetime import date
 
 import streamlit as st
-from components import EDITORIAL_LABELS, fmt_dt, run_cli, sidebar_controls
+from components import EDITORIAL_LABELS, fmt_dt, run_cli
 
-from o_rugido.repositories.dashboard_queries import dispatch_audit_history
+from o_rugido.repositories.dashboard_queries import (
+    dispatch_audit_history,
+    recent_editorial_actions,
+)
 from o_rugido.services.editorial import (
     EDITIONS,
     approve_article,
@@ -15,16 +18,15 @@ from o_rugido.services.editorial import (
     reject_card,
 )
 
-st.set_page_config(page_title="Edicoes", layout="wide")
-sidebar_controls()
+st.set_page_config(page_title="Edições", layout="wide")
 
-st.title("Edicoes")
+st.title("Edições")
 
 col_date, col_edition, col_btn = st.columns([2, 2, 1])
 with col_date:
     selected_date = st.date_input("Data", value=date.today())
 with col_edition:
-    edition = st.selectbox("Edicao", list(EDITIONS.keys()))
+    edition = st.selectbox("Edição", list(EDITIONS.keys()))
 with col_btn:
     st.write("")
     if st.button("Criar dispatch", use_container_width=True):
@@ -71,7 +73,7 @@ else:
 
             if status == "pending":
                 with col1:
-                    if st.button("Aprovar noticia", key=f"apv_{dispatch_id}", use_container_width=True):
+                    if st.button("Aprovar notícia", key=f"apv_{dispatch_id}", use_container_width=True):
                         approve_article(int(dispatch_id), "Dashboard", generate_card=True)
                         st.rerun()
                 with col2:
@@ -94,10 +96,10 @@ else:
                 with col3:
                     st.caption(f"Card: `{card_path}`")
 
-            if st.checkbox("Mostrar historico", key=f"hist_{dispatch_id}"):
+            if st.checkbox("Mostrar histórico", key=f"hist_{dispatch_id}"):
                 history = dispatch_audit_history(int(dispatch_id))
                 if not history:
-                    st.caption("(sem acoes)")
+                    st.caption("(sem ações)")
                 for h in history:
                     notes = h.get("notes")
                     notes_str = f" — {notes}" if notes else ""
@@ -105,3 +107,21 @@ else:
                         f"- `{fmt_dt(h.get('created_at'), 16)}` "
                         f"**{h.get('action')}** por {h.get('actor', 'system')}{notes_str}"
                     )
+
+st.divider()
+
+st.subheader("Últimas ações editoriais (todas as edições)")
+actions = recent_editorial_actions(limit=20)
+if not actions:
+    st.info("Nenhuma ação registrada.")
+else:
+    for a in actions:
+        article_id = a.get("article_id") or ""
+        article_suffix = f" (artigo {article_id[:8]})" if article_id else ""
+        notes = a.get("notes")
+        notes_suffix = f" — {notes}" if notes else ""
+        st.markdown(
+            f"- `{fmt_dt(a.get('created_at'), 16)}` "
+            f"**{a.get('action')}** por {a.get('actor', 'system')}"
+            f"{article_suffix}{notes_suffix}"
+        )
