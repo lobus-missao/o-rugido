@@ -43,6 +43,7 @@ def create_app() -> Flask:
     from .routes.health import bp as health_bp
     from .routes.images import bp as images_bp
     from .routes.ingestion import bp as ingestion_bp
+    from .routes.monitor import bp as monitor_bp
     from .routes.render import bp as render_bp
 
     app.register_blueprint(health_bp)
@@ -50,5 +51,6 @@ def create_app() -> Flask:
     app.register_blueprint(render_bp)
     app.register_blueprint(images_bp)
     app.register_blueprint(edit_bp)
+    app.register_blueprint(monitor_bp)
 
     return app
