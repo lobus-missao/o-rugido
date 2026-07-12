@@ -36,7 +36,7 @@ services:
     build: .
     container_name: o-rugido-dashboard
     command: >
-      streamlit run dashboard/app.py
+      streamlit run dashboard/Home.py
       --server.port 8501
       --server.address 0.0.0.0
       --server.fileWatcherType none

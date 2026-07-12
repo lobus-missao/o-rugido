@@ -30,19 +30,25 @@ services:
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
       O_RUGIDO_PUBLIC_URL: ${O_RUGIDO_PUBLIC_URL:-}
       SEARXNG_URL: http://searxng:8080
+      N8N_MONITOR_URL: ${N8N_MONITOR_URL:-http://n8n:5678}
+      N8N_MONITOR_EMAIL: ${N8N_MONITOR_EMAIL:-}
+      N8N_MONITOR_PASSWORD: ${N8N_MONITOR_PASSWORD:-}
+      HOST_PROC: /host/proc
     volumes:
       - ./data:/app/data
       - ./configs:/app/configs
       - ./templates:/app/templates
       - ./src:/app/src
       - ./api_server.py:/app/api_server.py
+      - /proc:/host/proc:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "8888:8888"
     restart: unless-stopped
 
   dashboard:
     build: .
-    command: streamlit run dashboard/app.py --server.port 8501 --server.address 0.0.0.0 --server.fileWatcherType poll
+    command: streamlit run dashboard/Home.py --server.port 8501 --server.address 0.0.0.0 --server.fileWatcherType poll
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,12 +56,17 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/o_rugido
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      N8N_MONITOR_URL: ${N8N_MONITOR_URL:-http://n8n:5678}
+      N8N_MONITOR_EMAIL: ${N8N_MONITOR_EMAIL:-}
+      N8N_MONITOR_PASSWORD: ${N8N_MONITOR_PASSWORD:-}
+      HOST_PROC: /host/proc
     volumes:
       - ./data:/app/data
       - ./configs:/app/configs
       - ./templates:/app/templates
       - ./src:/app/src
       - ./dashboard:/app/dashboard
+      - /proc:/host/proc:ro
     ports:
       - "8501:8501"
     restart: unless-stopped

@@ -3,13 +3,15 @@ from __future__ import annotations
 from datetime import date
 
 import streamlit as st
-from components import article_card, run_cli, sidebar_controls
+from components import article_card
 
 from o_rugido.repositories.articles import top_articles
+from o_rugido.repositories.dashboard_queries import (
+    editorial_counts_today,
+    pending_approval_total,
+)
 
 st.set_page_config(page_title="Portal O Rugido", layout="wide")
-
-sidebar_controls()
 
 with st.sidebar:
     st.markdown("### Listagem")
@@ -23,40 +25,30 @@ with st.sidebar:
     )
 
 st.title("Portal O Rugido")
-st.caption("Pipeline editorial Piaui")
+st.caption("Pipeline editorial Piauí")
 
-action_col1, action_col2 = st.columns(2)
-with action_col1:
-    if st.button("Coletar", use_container_width=True):
-        result = run_cli("collect", "--limit-per-feed", "30", timeout=180)
-        if result["ok"]:
-            st.success(
-                f"Coleta OK. {result.get('inserted', 0)} novos, "
-                f"{result.get('updated', 0)} atualizados"
-            )
-        else:
-            st.error(result.get("error", "falhou"))
-with action_col2:
-    if st.button("Recalcular", use_container_width=True):
-        result = run_cli("rank", timeout=120)
-        if result["ok"]:
-            st.success(result.get("output", "OK"))
-        else:
-            st.error(result.get("error"))
+counts_today = editorial_counts_today()
+pending_total = pending_approval_total()
+
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Pendentes", pending_total, help="Artigos aguardando aprovação humana no Telegram")
+m2.metric("Publicados hoje", counts_today.get("published", 0))
+m3.metric("Rejeitados hoje", counts_today.get("rejected", 0))
+m4.metric("Coletados hoje", counts_today.get("discovered", 0))
 
 st.divider()
 
 filt_col1, filt_col2 = st.columns(2)
 with filt_col1:
     date_range = st.date_input(
-        "Periodo",
+        "Período",
         value=(date.today(), date.today()),
         format="DD/MM/YYYY",
-        help="Filtra por data de publicacao. Padrao: hoje.",
+        help="Filtra por data de publicação. Padrão: hoje.",
     )
 with filt_col2:
     min_score = st.slider(
-        "Score minimo",
+        "Score mínimo",
         min_value=0, max_value=100, value=0, step=5,
         help="Mostra apenas artigos com score final acima desse valor.",
     )
@@ -76,10 +68,11 @@ articles = top_articles(
 
 if not articles:
     st.info(
-        "Nenhum artigo no periodo/score selecionado. "
-        "Amplia o intervalo, reduz o score minimo ou roda `collect` + `rank`."
+        "Nenhum artigo no período/score selecionado. "
+        "Amplia o intervalo ou reduz o score mínimo. "
+        "Coleta e ranqueio rodam automaticamente 3x/dia — se quiser forçar, vai em Operação."
     )
 else:
     st.subheader(f"{len(articles)} artigos")
     for art in articles:
-        article_card(art, key_prefix="home")
+        article_card(art, show_actions=False, key_prefix="home")

@@ -84,7 +84,7 @@ python -m o_rugido.cli rank
 python api_server.py
 
 # Terminal 2
-streamlit run dashboard/app.py --server.port 8501
+streamlit run dashboard/Home.py --server.port 8501
 ```
 
 ---

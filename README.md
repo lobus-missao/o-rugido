@@ -61,7 +61,7 @@ python -m o_rugido.cli make-card      # gera PNG dos artigos pendentes
 python -m o_rugido.cli dispatch       # cria envio editorial
 python -m o_rugido.cli stats          # métricas do banco
 
-streamlit run dashboard/app.py          # dashboard (aprovação + saúde)
+streamlit run dashboard/Home.py          # dashboard (aprovação + saúde)
 python api_server.py                    # API HTTP (porta 8888)
 ```
 
