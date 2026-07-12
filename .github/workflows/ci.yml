@@ -98,7 +98,7 @@ jobs:
           cd "$DEPLOY_PATH"
           git fetch origin
           git checkout homologation
-          git pull origin homologation
+          git reset --hard origin/homologation
           docker compose -f docker-compose.yml up -d --build
           docker image prune -f
           EOF
