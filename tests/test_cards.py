@@ -273,3 +273,34 @@ class TestRenderHtmlInternal:
         assert "#dc2626" in html
         assert "CRITICA" in html
 
+
+class TestBlockedImageUrls:
+    """Fix #43: dominios que bloqueiam crawler devem ser filtrados."""
+
+    def test_instagram_variations_are_blocked(self):
+        from o_rugido.services.image_search import is_blocked_image_url
+        cases = [
+            "https://lookaside.instagram.com/seo/google_widget/crawler/?id=1",
+            "https://scontent-gru2-1.cdninstagram.com/foo.jpg",
+            "https://scontent-gru2-2.xx.fbcdn.net/bar.jpg",
+            "https://z-p3-scontent.fbsbx.com/img",
+            "https://instagram.com/p/xyz",
+        ]
+        for url in cases:
+            assert is_blocked_image_url(url), f"deveria bloquear: {url}"
+
+    def test_valid_sources_pass(self):
+        from o_rugido.services.image_search import is_blocked_image_url
+        cases = [
+            "https://g1.globo.com/img/materia.jpg",
+            "https://meionorte.com/foto.jpg",
+            "https://cidadeverde.com/upload/a.jpg",
+        ]
+        for url in cases:
+            assert not is_blocked_image_url(url), f"nao deveria bloquear: {url}"
+
+    def test_empty_url_is_blocked(self):
+        from o_rugido.services.image_search import is_blocked_image_url
+        assert is_blocked_image_url("")
+        assert is_blocked_image_url(None)
+

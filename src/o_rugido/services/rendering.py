@@ -257,6 +257,10 @@ def download_post_image(image_url: str, article_id: str) -> Path | None:
     """Baixa a imagem do post pro disco. Rejeita SVG/HTML/conteúdo inválido."""
     if not image_url:
         return None
+    from o_rugido.services.image_search import is_blocked_image_url
+    if is_blocked_image_url(image_url):
+        logger.info("imagem em dominio bloqueado (crawler-anon), pulando: %s", image_url)
+        return None
     try:
         resp = requests.get(
             image_url,

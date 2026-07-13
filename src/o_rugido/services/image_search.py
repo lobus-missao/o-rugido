@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 
@@ -15,6 +16,28 @@ _logger = logging.getLogger(__name__)
 
 _DEFAULT_TIMEOUT = 8
 _DEFAULT_LIMIT = 12
+
+# Dominios que bloqueiam crawler anonimo (403/404 mesmo com User-Agent
+# comum). Filtrar antes de tentar baixar economiza tempo e evita cards
+# faltando imagem quando so o Nº 1 do resultado era bloqueado.
+_BLOCKED_HOST_SUFFIXES = (
+    "lookaside.instagram.com",
+    "cdninstagram.com",
+    "fbcdn.net",
+    "fbsbx.com",
+    "instagram.com",
+)
+
+
+def is_blocked_image_url(url: str) -> bool:
+    """True se o dominio da URL bloqueia crawler anonimo."""
+    if not url:
+        return True
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:
+        return True
+    return any(host == suffix or host.endswith("." + suffix) for suffix in _BLOCKED_HOST_SUFFIXES)
 
 
 def search_images(
@@ -55,9 +78,13 @@ def search_images(
         return []
 
     out: list[dict[str, Any]] = []
+    skipped_blocked = 0
     for item in data.get("results", []):
         img = item.get("img_src") or item.get("thumbnail_src")
         if not img:
+            continue
+        if is_blocked_image_url(img):
+            skipped_blocked += 1
             continue
         out.append({
             "url": img,
@@ -69,6 +96,8 @@ def search_images(
         if len(out) >= limit:
             break
 
+    if skipped_blocked:
+        _logger.info("searxng: %d imagem(ns) bloqueada(s) filtrada(s)", skipped_blocked)
     return out
 
 
