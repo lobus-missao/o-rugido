@@ -1,39 +1,11 @@
 from __future__ import annotations
 
-import json
-import subprocess
-import sys
 from pathlib import Path
 
-from flask import Flask, jsonify
+from flask import Flask
 
 ROOT = Path(__file__).resolve().parents[3]
-CLI = [sys.executable, "-m", "o_rugido.cli"]
 WEB_TEMPLATES_DIR = ROOT / "templates" / "web"
-
-
-def run_cli(*args, timeout: int = 300) -> tuple[dict, int]:
-    r = subprocess.run(
-        CLI + list(args),
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-        timeout=timeout,
-    )
-    if r.returncode == 0:
-        try:
-            parsed = json.loads(r.stdout)
-            if isinstance(parsed, dict):
-                return {"ok": True, **parsed}, 200
-            return {"ok": True, "data": parsed}, 200
-        except Exception:
-            return {"ok": True, "output": r.stdout.strip()[:500]}, 200
-    return {"ok": False, "error": r.stderr.strip()[-500:]}, 500
-
-
-def cli_json(*args, timeout: int = 300):
-    payload, status = run_cli(*args, timeout=timeout)
-    return jsonify(payload), status
 
 
 def create_app() -> Flask:
