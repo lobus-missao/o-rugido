@@ -23,6 +23,12 @@ docs/n8n-workflows/
 .claude/
 .mcp.json
 
+# Memoria do Claude Code (fica em ~/.claude/, nunca no repo)
+memory/
+
+# Anotacoes internas de planejamento (backlog, roadmap, sprints)
+notes/
+
 .DS_Store
 Thumbs.db
 *.log
