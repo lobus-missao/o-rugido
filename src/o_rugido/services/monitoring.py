@@ -292,60 +292,38 @@ def telegram_health(token: str) -> dict[str, Any]:
         return {"ok": False, "error": str(e)[:150]}
 
 
-_N8N_SESSION: dict[str, Any] = {"cookies": None, "expires": 0}
-
-
-def _n8n_login(base_url: str, email: str, password: str) -> Any | None:
-    """Faz login no n8n e cacheia cookie por ~50 min."""
-    if _N8N_SESSION["cookies"] and time.time() < _N8N_SESSION["expires"]:
-        return _N8N_SESSION["cookies"]
-    try:
-        r = requests.post(
-            f"{base_url}/rest/login",
-            json={"emailOrLdapLoginId": email, "password": password},
-            timeout=5,
-        )
-        if r.ok:
-            _N8N_SESSION["cookies"] = r.cookies
-            _N8N_SESSION["expires"] = time.time() + 50 * 60
-            return r.cookies
-    except Exception:
-        pass
-    return None
-
-
 def n8n_health(
     base_url: str | None = None,
-    email: str | None = None,
-    password: str | None = None,
+    api_key: str | None = None,
 ) -> dict[str, Any]:
-    """Estado do n8n: workflows ativos, ultimas execucoes por workflow."""
+    """Estado do n8n via API v1 (workflows e execucoes por workflow).
+
+    Precisa de N8N_MONITOR_API_KEY (gerada em Settings > n8n API na UI).
+    O endpoint /rest/* interno da UI não serve — retorna 401 sem browserId/CSRF."""
     base_url = base_url or os.getenv("N8N_MONITOR_URL", "http://n8n:5678")
-    email = email or os.getenv("N8N_MONITOR_EMAIL", "")
-    password = password or os.getenv("N8N_MONITOR_PASSWORD", "")
+    api_key = api_key or os.getenv("N8N_MONITOR_API_KEY", "")
 
-    if not email or not password:
-        return {"ok": False, "error": "N8N_MONITOR_EMAIL/PASSWORD nao configurados"}
+    if not api_key:
+        return {
+            "ok": False,
+            "error": "N8N_MONITOR_API_KEY nao configurado — crie em Settings > n8n API na UI",
+        }
 
-    cookies = _n8n_login(base_url, email, password)
-    if not cookies:
-        return {"ok": False, "error": "login no n8n falhou"}
+    headers = {"X-N8N-API-KEY": api_key, "accept": "application/json"}
 
     try:
-        wf_resp = requests.get(
-            f"{base_url}/rest/workflows",
-            cookies=cookies,
-            timeout=5,
-        )
-        workflows = wf_resp.json().get("data", []) if wf_resp.ok else []
+        wf_resp = requests.get(f"{base_url}/api/v1/workflows", headers=headers, timeout=5)
+        if not wf_resp.ok:
+            return {"ok": False, "error": f"api/v1/workflows retornou {wf_resp.status_code}"}
+        workflows = wf_resp.json().get("data", [])
 
         exec_resp = requests.get(
-            f"{base_url}/rest/executions?limit=50",
-            cookies=cookies,
+            f"{base_url}/api/v1/executions?limit=50",
+            headers=headers,
             timeout=5,
         )
-        executions = exec_resp.json().get("data", {}) if exec_resp.ok else {}
-        results = executions.get("results", executions if isinstance(executions, list) else [])
+        executions = exec_resp.json().get("data", []) if exec_resp.ok else []
+        results = executions if isinstance(executions, list) else executions.get("results", [])
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
 

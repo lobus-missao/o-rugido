@@ -31,8 +31,7 @@ services:
       O_RUGIDO_PUBLIC_URL: ${O_RUGIDO_PUBLIC_URL:-}
       SEARXNG_URL: http://searxng:8080
       N8N_MONITOR_URL: ${N8N_MONITOR_URL:-http://n8n:5678}
-      N8N_MONITOR_EMAIL: ${N8N_MONITOR_EMAIL:-}
-      N8N_MONITOR_PASSWORD: ${N8N_MONITOR_PASSWORD:-}
+      N8N_MONITOR_API_KEY: ${N8N_MONITOR_API_KEY:-}
       HOST_PROC: /host/proc
     volumes:
       - ./data:/app/data
@@ -57,8 +56,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       N8N_MONITOR_URL: ${N8N_MONITOR_URL:-http://n8n:5678}
-      N8N_MONITOR_EMAIL: ${N8N_MONITOR_EMAIL:-}
-      N8N_MONITOR_PASSWORD: ${N8N_MONITOR_PASSWORD:-}
+      N8N_MONITOR_API_KEY: ${N8N_MONITOR_API_KEY:-}
       HOST_PROC: /host/proc
     volumes:
       - ./data:/app/data
