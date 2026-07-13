@@ -381,7 +381,7 @@ def send_telegram_alert(text: str, chat_id: str, token: str) -> bool:
     try:
         r = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"},
+            json={"chat_id": chat_id, "text": text},
             timeout=10,
         )
         return r.ok

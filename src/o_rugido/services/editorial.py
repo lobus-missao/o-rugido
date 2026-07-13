@@ -5,6 +5,7 @@ Modelo de edição único (`default`) — uma fila contínua, sem janelas horár
 """
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
@@ -23,6 +24,13 @@ from o_rugido.core.config import (
 )
 from o_rugido.core.db import connect, utc_now
 from o_rugido.core.text_utils import normalize_text, strip_source_suffix
+
+
+def _esc(text: str | None) -> str:
+    """Escapa texto pra usar em caption HTML do Telegram (<, >, &)."""
+    if not text:
+        return ""
+    return html.escape(str(text), quote=False)
 
 _GNEWS_GENERIC_PREFIXES = (
     "Comprehensive up-to-date news coverage",
@@ -421,7 +429,7 @@ def _swap_telegram_card_photo(
         "type": "photo",
         "media": "attach://card",
         "caption": caption,
-        "parse_mode": "Markdown",
+        "parse_mode": "HTML",
     }
     try:
         with open(card_path, "rb") as photo:
@@ -663,8 +671,8 @@ def create_dispatch(
     try:
         _tg("sendMessage", json={
             "chat_id": TELEGRAM_CHAT_ID,
-            "text": f"📰 *EDIÇÃO {edition_label.upper()}*\n\nSelecionei {len(created)} notícia(s) para aprovação editorial. Aprove ou rejeite cada uma:",
-            "parse_mode": "Markdown",
+            "text": f"📰 <b>EDIÇÃO {_esc(edition_label.upper())}</b>\n\nSelecionei {len(created)} notícia(s) para aprovação editorial. Aprove ou rejeite cada uma:",
+            "parse_mode": "HTML",
         })
 
         # Envia cada artigo para aprovação
@@ -715,11 +723,11 @@ def _send_article_for_approval(dispatch_id: int, art: dict, rank: int, edition_l
 
     parts = []
     if resumo:
-        parts.append(resumo)
+        parts.append(_esc(resumo))
     if url:
         if parts:
             parts.append("")
-        parts.append(f"[Ler matéria original]({url})")
+        parts.append(f'<a href="{_esc(url)}">Ler matéria original</a>')
     caption = "\n".join(parts)[:1024]
 
     keyboard_row = [
@@ -735,14 +743,14 @@ def _send_article_for_approval(dispatch_id: int, art: dict, rank: int, edition_l
             result = _tg("sendPhoto", data={
                 "chat_id": TELEGRAM_CHAT_ID,
                 "caption": caption,
-                "parse_mode": "Markdown",
+                "parse_mode": "HTML",
                 "reply_markup": json.dumps({"inline_keyboard": [keyboard_row]}),
             }, files={"photo": photo})
     else:
         result = _tg("sendMessage", json={
             "chat_id": TELEGRAM_CHAT_ID,
             "text": caption + "\n\n⚠️ Imagem nao encontrada — use Editar pra escolher.",
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "reply_markup": {"inline_keyboard": [keyboard_row]},
         })
 
@@ -845,12 +853,12 @@ def generate_card_for_dispatch(
     else:
         msg = "⚠️ Artigo aprovado! Card não gerado automaticamente."
         if error_msg:
-            msg += f"\nErro: `{error_msg}`"
-        msg += f"\nDispatch ID: `{dispatch_id}` — gere pelo dashboard."
+            msg += f"\nErro: <code>{_esc(error_msg)}</code>"
+        msg += f"\nDispatch ID: <code>{dispatch_id}</code> — gere pelo dashboard."
         _tg("sendMessage", json={
             "chat_id": TELEGRAM_CHAT_ID,
             "text": msg,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
         })
         return {"ok": False, "dispatch_id": dispatch_id, "status": dispatch["status"], "error": error_msg}
 
@@ -920,11 +928,11 @@ def _build_post_caption(dispatch_with_article: dict) -> str:
 
     parts = []
     if summary:
-        parts.append(summary)
+        parts.append(_esc(summary))
     if url:
         if parts:
             parts.append("")
-        parts.append(f"[Ler matéria original]({url})")
+        parts.append(f'<a href="{_esc(url)}">Ler matéria original</a>')
     return "\n".join(parts)[:1024]
 
 
@@ -955,7 +963,7 @@ def _send_card_for_approval(
         result = _tg("sendPhoto", data={
             "chat_id": TELEGRAM_CHAT_ID,
             "caption": caption,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "reply_markup": json.dumps({"inline_keyboard": [keyboard_row]}),
         }, files={"photo": photo})
     msg_id = str(result.get("result", {}).get("message_id", ""))
@@ -1098,14 +1106,14 @@ def _edit_article_message(message_id: str | None, status_text: str, user: str) -
     """Marca a mensagem (foto ou texto) com status final e remove os botões."""
     if not message_id:
         return
-    new_text = f"{status_text} por *{user}*"
+    new_text = f"{_esc(status_text)} por <b>{_esc(user)}</b>"
     # Mensagem com foto → editMessageCaption
     try:
         _tg("editMessageCaption", json={
             "chat_id": TELEGRAM_CHAT_ID,
             "message_id": int(message_id),
             "caption": new_text,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "reply_markup": {"inline_keyboard": []},
         })
         return
@@ -1117,7 +1125,7 @@ def _edit_article_message(message_id: str | None, status_text: str, user: str) -
             "chat_id": TELEGRAM_CHAT_ID,
             "message_id": int(message_id),
             "text": new_text,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "reply_markup": {"inline_keyboard": []},
         })
     except Exception:
