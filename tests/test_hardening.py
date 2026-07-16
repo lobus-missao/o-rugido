@@ -294,3 +294,28 @@ class TestCLIParser:
         parser = build_parser()
         args = parser.parse_args(["backup"])
         assert args.output is None
+
+
+# ── SQL injection guard (fix #102) ────────────────────────────────────────────
+
+class TestSqlInjectionGuard:
+    def test_update_dispatch_rejeita_coluna_arbitraria(self):
+        import pytest
+
+        from o_rugido.services.editorial import update_dispatch
+        with pytest.raises(ValueError, match="colunas nao permitidas"):
+            update_dispatch(1, **{"; DROP TABLE dispatches; --": "x"})
+
+    def test_update_dispatch_rejeita_coluna_desconhecida(self):
+        import pytest
+
+        from o_rugido.services.editorial import update_dispatch
+        with pytest.raises(ValueError, match="colunas nao permitidas"):
+            update_dispatch(1, coluna_que_nao_existe="x")
+
+    def test_select_top_articles_rejeita_scope_arbitrario(self):
+        import pytest
+
+        from o_rugido.services.editorial import select_top_articles
+        with pytest.raises(ValueError, match="scope invalido"):
+            select_top_articles("default", scope="foo; DROP TABLE articles; --")

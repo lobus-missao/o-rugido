@@ -480,8 +480,23 @@ def get_dispatch_with_article(dispatch_id: int) -> dict | None:
     }
 
 
+_DISPATCH_UPDATABLE_COLS = frozenset({
+    "status", "rank", "scope", "card_path", "image_url",
+    "article_tg_message_id", "card_tg_message_id",
+    "article_reviewed_by", "article_reviewed_at",
+    "card_reviewed_by", "card_reviewed_at",
+    "ready_at", "review_notes",
+    "edit_token", "edit_token_expires_at",
+    "edited_title", "edited_summary",
+    "updated_at",
+})
+
+
 def update_dispatch(dispatch_id: int, **fields) -> None:
     fields["updated_at"] = utc_now()
+    bad = set(fields) - _DISPATCH_UPDATABLE_COLS
+    if bad:
+        raise ValueError(f"colunas nao permitidas em update_dispatch: {sorted(bad)}")
     set_clause = ", ".join(f"{k} = %s" for k in fields)
     values = [*fields.values(), dispatch_id]
     with connect() as conn, conn.cursor() as cur:
@@ -525,8 +540,13 @@ def get_today_editions() -> dict[str, list[dict]]:
     return result
 
 
+_ALLOWED_SCOPES = frozenset({"piaui"})
+
+
 def select_top_articles(edition: str, scope: str = "piaui", top: int = 3) -> list[dict]:
     """Seleciona os melhores artigos para a edição, excluindo já despachados hoje."""
+    if scope not in _ALLOWED_SCOPES:
+        raise ValueError(f"scope invalido: {scope!r}. Aceitos: {sorted(_ALLOWED_SCOPES)}")
     window_hours = EDITION_WINDOWS.get(edition, 6)
     cutoff = datetime.now(timezone.utc) - timedelta(hours=window_hours)
     score_col = f"final_score_{scope}"
