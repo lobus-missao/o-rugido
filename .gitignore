@@ -14,8 +14,9 @@ data/cards/*.png
 data/cards/*.html
 *.db
 
-# n8n workflows — mantemos só no n8n (contém credenciais)
-docs/n8n-workflows/
+# n8n workflows — JSONs contêm credencial, README pode ir
+docs/n8n-workflows/*.json
+!docs/n8n-workflows/README.md
 
 .dockerignore
 .vscode/
