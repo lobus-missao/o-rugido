@@ -170,8 +170,8 @@ docker exec o-rugido-app python -c "from o_rugido.services.rendering import is_p
 
 ```bash
 # Backup (dev local)
-docker exec o-rugido-rss-postgres-1 \
-  pg_dump -U news o_rugido > backup_$(date +%Y%m%d_%H%M%S).sql
+docker exec o-rugido-postgres \
+  pg_dump -U orugido o_rugido > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Backup (homolog/prod) — direto no postgres compartilhado da plataforma
 docker exec <container-postgres-plataforma> \

@@ -2,6 +2,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    container_name: o-rugido-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -47,6 +48,7 @@ services:
 
   dashboard:
     build: .
+    container_name: o-rugido-dashboard
     command: streamlit run dashboard/Home.py --server.port 8501 --server.address 0.0.0.0 --server.fileWatcherType poll
     depends_on:
       postgres:
@@ -71,6 +73,7 @@ services:
 
   n8n:
     image: n8nio/n8n:latest
+    container_name: o-rugido-n8n
     environment:
       N8N_BASIC_AUTH_ACTIVE: "true"
       N8N_BASIC_AUTH_USER: ${N8N_USER}
@@ -90,6 +93,7 @@ services:
 
   searxng:
     image: searxng/searxng:latest
+    container_name: o-rugido-searxng
     environment:
       SEARXNG_BASE_URL: http://searxng:8080/
       INSTANCE_NAME: o-rugido
@@ -111,6 +115,7 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
+    container_name: o-rugido-cloudflared
     command: tunnel --no-autoupdate --url http://o-rugido-app:8888
     depends_on:
       - o-rugido-app
@@ -119,6 +124,7 @@ services:
 
   cloudflared-n8n:
     image: cloudflare/cloudflared:latest
+    container_name: o-rugido-cloudflared-n8n
     command: tunnel --no-autoupdate --url http://n8n:5678
     depends_on:
       - n8n

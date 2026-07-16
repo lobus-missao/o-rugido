@@ -36,20 +36,20 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: news
+          POSTGRES_USER: orugido
           POSTGRES_PASSWORD: senha_ci
           POSTGRES_DB: o_rugido
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U news"
+          --health-cmd "pg_isready -U orugido"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://news:senha_ci@localhost:5432/o_rugido
-      POSTGRES_USER: news
+      DATABASE_URL: postgresql://orugido:senha_ci@localhost:5432/o_rugido
+      POSTGRES_USER: orugido
       POSTGRES_PASSWORD: senha_ci
       TELEGRAM_BOT_TOKEN: dummy
       TELEGRAM_CHAT_ID: "0"
