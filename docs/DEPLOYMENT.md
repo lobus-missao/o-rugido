@@ -134,8 +134,44 @@ docker exec o-rugido-app curl -s http://localhost:8888/health
 
 Externamente (via NGINX Proxy Manager + Cloudflare):
 ```bash
-curl https://o-rugido-homolog.seudominio.com.br/health
+curl https://api.missaopi.qzz.io/health
 ```
+
+---
+
+## Subdomínios em homolog
+
+Todos os hostnames públicos passam pelo Cloudflare (orange cloud) e chegam na porta 443 do servidor, onde o NGINX Proxy Manager decide qual container atender.
+
+```
+                          ┌──────────────────────────┐
+Cliente HTTPS ─── DNS ──▶ │ Cloudflare (orange)      │
+                          └──────────┬───────────────┘
+                                     │ passa TLS
+                                     ▼
+                          ┌──────────────────────────┐
+                          │ 163.176.186.209:443      │
+                          │ NGINX Proxy Manager      │
+                          └──────────┬───────────────┘
+                                     │ routing por Host
+                                     ▼
+                          ┌──────────────────────────┐
+                          │ Container correspondente │
+                          └──────────────────────────┘
+```
+
+| Subdomínio | Container / porta interna | O que é |
+|---|---|---|
+| `newsradar.missaopi.qzz.io` | `o-rugido-dashboard:8501` | Dashboard Streamlit |
+| `api.missaopi.qzz.io` | `o-rugido-app:8888` | API Flask |
+| `n8n.missaopi.qzz.io` | `o-rugido-n8n:5678` | Orquestrador n8n |
+| `proxy.missaopi.qzz.io` | `nginx-proxy-manager:81` | UI do NPM (admin) |
+| `portainer.missaopi.qzz.io` | `portainer:9443` | Portainer (admin) |
+
+**Notas**:
+- Rebrand cosmético do subdomínio principal (`newsradar` → `o-rugido`) fica pra M11.
+- Cert de `api.missaopi.qzz.io` foi criado via certbot direto no container NPM (issue #48 rastreia migração pro fluxo UI).
+- Configs do NPM vivem em `/data/compose/1/data/nginx/proxy_host/` (não em `/docker/nginx-proxy-manager/` que aparece vazio — issue #49).
 
 ---
 
