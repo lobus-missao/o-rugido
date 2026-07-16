@@ -20,7 +20,7 @@ def test_stats_endpoint_returns_service_output(monkeypatch):
 
 
 def test_api_returns_500_on_service_error(monkeypatch):
-    def boom():
+    def boom(*args, **kwargs):
         raise RuntimeError("falhou")
     monkeypatch.setattr(ingestion_route, "rank_all", boom)
     client = api_server.app.test_client()

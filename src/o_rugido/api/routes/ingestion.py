@@ -34,12 +34,17 @@ def pipeline_collect():
 
 @bp.post("/pipeline/rank")
 def pipeline_rank():
+    # Default incremental: só artigos sem score. Cron chama a cada 15min
+    # e nao pode rerankeavr 10k+ artigos. Pra reprocessar tudo (mudou
+    # heuristica), passa {"full": true}.
+    body = request.get_json(silent=True) or {}
+    full = bool(body.get("full", False))
     try:
-        count = rank_all()
+        count = rank_all(only_unscored=not full)
     except Exception as exc:
         _logger.exception("rank_all falhou")
         return jsonify({"ok": False, "error": str(exc)[:400]}), 500
-    return jsonify({"ok": True, "ranked": count})
+    return jsonify({"ok": True, "ranked": count, "mode": "full" if full else "incremental"})
 
 
 @bp.post("/pipeline/cleanup")

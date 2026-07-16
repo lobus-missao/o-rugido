@@ -376,13 +376,14 @@ def auto_classify() -> int:
     return len(batch)
 
 
-def rank_all() -> int:
-    """Recalcula auto_score_* e final_score_* para todos os artigos no banco.
+def rank_all(only_unscored: bool = False) -> int:
+    """Recalcula auto_score_* e final_score_* dos artigos.
 
-    Extrai a mesma lógica de cmd_rank() do CLI, tornando-a reutilizável
-    pelo scheduler interno e por qualquer outro chamador Python.
+    Se only_unscored=True, considera só artigos sem final_score_piaui
+    (uso rotineiro: rankear apenas os novos que a coleta trouxe).
+    Se False (default), reprocessa todos — util após mudar heuristica do ranker.
 
-    Retorna o número de artigos atualizados.
+    Retorna o numero de artigos atualizados.
     """
     import psycopg2.extras
 
@@ -390,12 +391,16 @@ def rank_all() -> int:
 
     init_db()
 
+    where = "WHERE final_score_piaui IS NULL" if only_unscored else ""
     with connect() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT id, title, summary, source_scope, source_trust,"
-            " published_at, coverage_count FROM articles"
+            f" published_at, coverage_count FROM articles {where}"
         )
         rows = [dict(r) for r in cur.fetchall()]
+
+    if not rows:
+        return 0
 
     batch = []
     for article in rows:
