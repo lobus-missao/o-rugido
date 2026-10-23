@@ -37,6 +37,7 @@ Configurar em **Settings → Variables** do n8n (ou via env do container):
 
 ```
 O_RUGIDO_API_URL=http://app:8888
+INTERNAL_API_KEY=...   # mesma chave da API; ver "Autenticação da API" abaixo
 O_RUGIDO_PUBLIC_URL=https://seudominio.com.br
 
 SERPER_API_KEY=...
@@ -48,6 +49,23 @@ TELEGRAM_FINAL_CHANNEL=@seu_canal_publico
 INSTAGRAM_ACCESS_TOKEN=EAAxxx...
 INSTAGRAM_BUSINESS_ID=17841...
 ```
+
+## Autenticação da API
+
+As rotas de automação da API (`/pipeline/*`, `/stats`, `/cards/render`, `/dispatch/<id>/edit-token`,
+`/monitor/*`) exigem o header `X-Internal-Key` **quando a env `INTERNAL_API_KEY` está definida na API**.
+Sem a env, a API segue aberta como antes (e loga um aviso). Continuam públicas: `/health`,
+`/cards/<arquivo>.png` (o Instagram baixa o card), `/edit` (protegida por token próprio) e `/api/image-search`.
+
+Ordem segura para ligar (não derruba o n8n):
+
+1. Suba o código novo **sem** `INTERNAL_API_KEY` — nada muda.
+2. Gere a chave (`openssl rand -hex 32`) e coloque `INTERNAL_API_KEY` no `.env` do servidor.
+3. No n8n, em **todo node HTTP Request** que chama a API, adicione o header:
+   `X-Internal-Key` = `{{ $env.INTERNAL_API_KEY }}` (o compose já repassa a env ao container do n8n).
+4. Só então reinicie a API com a mesma `INTERNAL_API_KEY`. Teste: sem o header a rota responde `401`; com ele, `200`.
+
+Para desligar de novo, esvazie `INTERNAL_API_KEY` e reinicie a API.
 
 ## Fluxo
 

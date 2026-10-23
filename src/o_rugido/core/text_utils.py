@@ -22,6 +22,13 @@ def strip_html(value: str | None) -> str:
     return normalize_spaces(value)
 
 
+def redact_secret(text: str, secret: str | None) -> str:
+    """Troca o segredo (ex.: token do bot na URL) por '***' em mensagens de erro."""
+    if not secret:
+        return text
+    return text.replace(secret, "***")
+
+
 def normalize_spaces(value: str | None) -> str:
     if not value:
         return ""

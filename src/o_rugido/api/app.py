@@ -25,4 +25,8 @@ def create_app() -> Flask:
     app.register_blueprint(edit_bp)
     app.register_blueprint(monitor_bp)
 
+    from .auth import init_auth
+
+    init_auth(app)
+
     return app

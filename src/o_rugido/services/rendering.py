@@ -4,13 +4,13 @@ import logging
 import mimetypes
 import os
 import shutil
+from html import escape as _html_escape
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-import requests
-
 from o_rugido.core.config import CARDS_DIR, TEMPLATES_DIR, ensure_dirs
+from o_rugido.core.net_safety import safe_get
 from o_rugido.core.text_utils import strip_source_suffix
 
 from ..repositories.articles import articles_pending_card, update_card_status
@@ -45,24 +45,29 @@ def build_card_context(
     Supports all placeholders used by card.html and card-editorial-base.html.
     Every value is a plain string — never None, never a raw '{{...}}' marker.
     """
+    # Todo texto vindo de artigo/editor entra escapado no HTML do card; o HTML
+    # estrutural (tags <span>/<div>) é montado aqui, depois do escape.
+    def esc(value: object) -> str:
+        return _html_escape(str(value), quote=True)
+
     # ── Título ─────────────────────────────────────────────────────────────────
-    titulo = strip_source_suffix(title_override or article.get("title") or "")
+    titulo = esc(strip_source_suffix(title_override or article.get("title") or ""))
 
     # ── Subtítulo (card-editorial-base.html) ───────────────────────────────────
     subtitulo_raw = (subtitle_override or "").strip()
     subtitulo_html = (
-        f'<div class="card-subtitulo">{subtitulo_raw}</div>' if subtitulo_raw else ""
+        f'<div class="card-subtitulo">{esc(subtitulo_raw)}</div>' if subtitulo_raw else ""
     )
 
     # ── Prioridade ─────────────────────────────────────────────────────────────
     priority = (article.get("priority") or "").lower()
-    priority_label = _PRIORITY_LABEL.get(priority, priority.upper() or "?")
+    priority_label = esc(_PRIORITY_LABEL.get(priority, priority.upper() or "?"))
     priority_color = _PRIORITY_COLOR.get(priority, "#6b7280")
 
     # ── Editoria / Categoria ───────────────────────────────────────────────────
     category = article.get("category") or "-"
     categoria_tag = (
-        f'<span class="tag tag-categoria">{category}</span>'
+        f'<span class="tag tag-categoria">{esc(category)}</span>'
         if category and category != "-"
         else ""
     )
@@ -70,10 +75,10 @@ def build_card_context(
     # ── Resumo ─────────────────────────────────────────────────────────────────
     summary_override = (article.get("__summary_override") or "").strip()
     resumo_raw = summary_override or article.get("summary") or ""
-    resumo = resumo_raw[:200]
+    resumo = esc(resumo_raw[:200])
 
     # ── Localidade ─────────────────────────────────────────────────────────────
-    localidade = article.get("locality") or ""
+    localidade = esc(article.get("locality") or "")
     localidade_tag = (
         f'<span class="tag local">{localidade}</span>' if localidade else ""
     )
@@ -95,21 +100,21 @@ def build_card_context(
     return {
         "titulo": titulo,
         "subtitulo_html": subtitulo_html,
-        "editoria": category,
+        "editoria": esc(category),
         "prioridade": priority_label,
         "prioridade_cor": priority_color,
         "resumo": resumo,
         "pontos_chave": "",
         "pontos_html": "",
-        "fonte": article.get("source") or "",
-        "data": str(article.get("published_at") or "")[:10],
+        "fonte": esc(article.get("source") or ""),
+        "data": esc(str(article.get("published_at") or "")[:10]),
         "localidade_tag": localidade_tag,
         "entidades_tags": "",
         "categoria_tag": categoria_tag,
         "conteudo_tag": conteudo_tag,
         "justificativa_html": "",
-        "url": article.get("url") or article.get("canonical_url") or "",
-        "image_url": hero_url,
+        "url": esc(article.get("url") or article.get("canonical_url") or ""),
+        "image_url": esc(hero_url),
         "hero_empty_class": hero_empty_class,
     }
 
@@ -197,6 +202,19 @@ def _chromium_executable() -> str | None:
     return None
 
 
+_INLINE_SCHEMES = ("data:", "about:")
+
+
+def _allow_only_inline(route: Any) -> None:
+    """Handler do Playwright: o card é 100% inline (imagem em data URL, sem
+    fontes externas); qualquer outra requisição do navegador é abortada, para
+    que HTML injetado não consiga fazer o Chromium acessar a rede."""
+    if route.request.url.startswith(_INLINE_SCHEMES):
+        route.continue_()
+    else:
+        route.abort()
+
+
 def is_playwright_available() -> bool:
     """Return True if Playwright + Chromium can launch successfully."""
     try:
@@ -262,11 +280,10 @@ def download_post_image(image_url: str, article_id: str) -> Path | None:
         logger.info("imagem em dominio bloqueado (crawler-anon), pulando: %s", image_url)
         return None
     try:
-        resp = requests.get(
+        resp = safe_get(
             image_url,
             timeout=15,
             headers={"User-Agent": "o-rugido/1.0"},
-            allow_redirects=True,
         )
         resp.raise_for_status()
         ext = _image_extension_from(image_url, resp.headers.get("Content-Type"))
@@ -411,6 +428,7 @@ def render_single_card(
         with sync_playwright() as p:
             browser = p.chromium.launch(**launch_kwargs)
             page = browser.new_page(viewport={"width": 1080, "height": 1080})
+            page.route("**/*", _allow_only_inline)
             page.set_content(html, wait_until="networkidle")
             page.locator("#card").screenshot(path=str(card_path))
             browser.close()

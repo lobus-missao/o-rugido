@@ -16,6 +16,7 @@ services:
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
       O_RUGIDO_PUBLIC_URL: ${O_RUGIDO_PUBLIC_URL:-}
       SEARXNG_URL: http://searxng:8080
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
     volumes:
       - ./data:/app/data
       - ./configs:/app/configs

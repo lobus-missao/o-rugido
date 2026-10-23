@@ -23,4 +23,8 @@ O projeto ainda não segue [SemVer](https://semver.org/lang/pt-BR/) — versões
 
 ### Segurança
 - Histórico do git limpo do token do Telegram vazado.
+- API: rotas de automação passam a exigir `X-Internal-Key` quando `INTERNAL_API_KEY` está definida (sem a env, comportamento antigo). `/health`, `/cards/<arquivo>`, `/edit` e `/api/image-search` seguem públicas. Ver `docs/n8n-workflows/README.md`.
+- Download de imagem do card só aceita http/https para hosts públicos e revalida cada redirect (SSRF).
+- Texto de artigo/editor é escapado no HTML do card, e o Chromium do render não faz requisições de rede (só `data:`).
+- Token do bot do Telegram é redigido nas mensagens de erro (`/monitor/telegram`, logs).
 - `memory/` e `notes/` no `.gitignore` — não vão pro repo.
