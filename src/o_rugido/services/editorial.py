@@ -23,7 +23,7 @@ from o_rugido.core.config import (
     TELEGRAM_CHAT_ID,
 )
 from o_rugido.core.db import connect, utc_now
-from o_rugido.core.text_utils import normalize_text, strip_source_suffix
+from o_rugido.core.text_utils import normalize_text, redact_secret, strip_source_suffix
 
 
 def _esc(text: str | None) -> str:
@@ -198,8 +198,13 @@ def _tg(method: str, **kwargs) -> dict:
         return {"ok": True, "dry_run": True, "result": {"message_id": 0, "method": method}}
     if not TELEGRAM_BOT_TOKEN:
         raise ValueError("TELEGRAM_BOT_TOKEN não configurado")
-    r = requests.post(f"{API}/{method}", timeout=30, **kwargs)
-    r.raise_for_status()
+    try:
+        r = requests.post(f"{API}/{method}", timeout=30, **kwargs)
+        r.raise_for_status()
+    except requests.RequestException as exc:
+        # A mensagem de erro do requests traz a URL, e a URL traz o token do bot.
+        exc.args = (redact_secret(str(exc), TELEGRAM_BOT_TOKEN), *exc.args[1:])
+        raise
     return r.json()
 
 
@@ -446,7 +451,10 @@ def _swap_telegram_card_photo(
             )
             r.raise_for_status()
     except Exception as exc:
-        _logger.warning("editMessageMedia falhou: %s", str(exc)[:200])
+        _logger.warning(
+            "editMessageMedia falhou: %s",
+            redact_secret(str(exc), TELEGRAM_BOT_TOKEN)[:200],
+        )
 
 
 def get_dispatch_with_article(dispatch_id: int) -> dict | None:

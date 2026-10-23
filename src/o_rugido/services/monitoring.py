@@ -9,6 +9,7 @@ import psutil
 import requests
 
 from o_rugido.core.db import connect
+from o_rugido.core.text_utils import redact_secret
 
 _START = time.time()
 
@@ -289,7 +290,8 @@ def telegram_health(token: str) -> dict[str, Any]:
             }
         return {"ok": False, "status": r.status_code, "latency_ms": latency}
     except Exception as e:
-        return {"ok": False, "error": str(e)[:150]}
+        # A URL da chamada leva o token; sem redigir, o erro vazaria no /monitor.
+        return {"ok": False, "error": redact_secret(str(e), token)[:150]}
 
 
 def n8n_health(

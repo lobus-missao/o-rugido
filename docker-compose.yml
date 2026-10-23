@@ -31,6 +31,7 @@ services:
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
       O_RUGIDO_PUBLIC_URL: ${O_RUGIDO_PUBLIC_URL:-}
       SEARXNG_URL: http://searxng:8080
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
       N8N_MONITOR_URL: ${N8N_MONITOR_URL:-http://n8n:5678}
       N8N_MONITOR_API_KEY: ${N8N_MONITOR_API_KEY:-}
       HOST_PROC: /host/proc
@@ -83,6 +84,7 @@ services:
       N8N_PROTOCOL: https
       N8N_HOST: ${N8N_HOST:-localhost}
       O_RUGIDO_API_URL: http://o-rugido-app:8888
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
       O_RUGIDO_PUBLIC_URL: ${O_RUGIDO_PUBLIC_URL:-}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     ports:
